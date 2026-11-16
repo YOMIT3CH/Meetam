@@ -4,6 +4,8 @@ import { LuMail, LuLock } from 'react-icons/lu';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
@@ -21,12 +23,17 @@ export default function Login() {
             Sign in to your account to continue
           </p>
 
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+          <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
             <div>
               <label className="block text-sm text-slate-300 mb-2">Email address</label>
               <div className="relative">
                 <LuMail size={18} className="absolute left-3 top-3 text-slate-500" />
-                <input type="email" placeholder="you@example.com" className="input-field pl-10" required />
+                <input
+              type="email"
+              placeholder="you@example.com"
+              className="input-field pl-10 h-12 rounded-lg"
+              required
+            />
               </div>
             </div>
 
@@ -39,7 +46,12 @@ export default function Login() {
               </div>
               <div className="relative">
                 <LuLock size={18} className="absolute left-3 top-3 text-slate-500" />
-                <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" className="input-field pl-10" required />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  className="input-field pl-10 h-12 rounded-lg"
+                  required
+                />
               </div>
             </div>
 
@@ -54,7 +66,7 @@ export default function Login() {
             </div>
 
             <button type="submit" className="bg-gradient-to-r from-emerald-500 to-pink-500 text-white w-full py-3 rounded-xl font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all">
-              Sign in
+              Sign in...
             </button>
           </form>
 

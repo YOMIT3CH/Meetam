@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { LuMenu, LuX } from 'react-icons/lu';
+import { LuMenu, LuX, LuLogOut } from 'react-icons/lu';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const navLinks = [
     { name: "How It Works", href: "#how-it-works" },

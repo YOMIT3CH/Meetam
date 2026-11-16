@@ -9,7 +9,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950">
       <Navbar />
-      <main className="flex-grow relative">
+      <main className="flex-grow pt-20 relative">
         <Hero />
         <HowItWorks />
         <Testimonials />
