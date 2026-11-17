@@ -14,33 +14,35 @@ const StarRating = ({ rating }) => {
 
 export default function Testimonials() {
   return (
-    <section className="py-20">
+    <section className="py-16 sm:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">What Our Members Say</h2>
-          <p className="text-slate-400 max-w-xl mx-auto">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4">What Our Members Say</h2>
+          <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
             Real connections, real stories from singles across Nigeria.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {TESTIMONIALS.map((t) => (
-            <div key={t.name} className="glass-card p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                  {t.name.charAt(0)}
+            <div key={t.name} className="glass-card p-5 sm:p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-pink-500 flex items-center justify-center text-white font-bold shrink-0">
+                    {t.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{t.name}</p>
+                    <p className="text-xs text-slate-400">{t.city}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">{t.name}</p>
-                  <p className="text-xs text-slate-400">{t.city}</p>
+                <div className="flex items-end gap-1 mb-3">
+                  <StarRating rating={t.rating} />
                 </div>
+                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed italic">
+                  "{t.quote}"
+                </p>
               </div>
-              <div className="flex items-end gap-1 mb-4">
-                <StarRating rating={t.rating} />
-              </div>
-              <p className="text-slate-300 text-sm leading-relaxed italic">
-                "{t.quote}"
-              </p>
             </div>
           ))}
         </div>

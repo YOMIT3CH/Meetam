@@ -3,7 +3,6 @@ export const SITE_TAGLINE = "Personality-first dating for Nigerian singles";
 
 export const NAV_LINKS = [
   { name: "How It Works", href: "#how-it-works" },
-  { name: "Browse", href: "/browse" },
   { name: "Safety", href: "#safety" },
   { name: "Terms", href: "/terms" },
 ];

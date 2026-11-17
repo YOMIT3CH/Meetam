@@ -1,194 +1,378 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { LuMail, LuLock, LuUser, LuCalendar } from 'react-icons/lu';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import supabase from '../lib/supabase';
+import AuthLayout from '../components/AuthLayout';
+import { NIGERIAN_STATES } from '../lib/data';
+import {
+  LuMail,
+  LuLock,
+  LuUser,
+  LuCalendar,
+  LuMapPin,
+  LuEye,
+  LuEyeOff,
+  LuCircleAlert,
+  LuCircleCheck,
+  LuArrowRight,
+  LuChevronDown,
+} from 'react-icons/lu';
 
 export default function Register() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+
+  // State Declarations
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
+  const [locationCity, setLocationCity] = useState('');
+  const [locationState, setLocationState] = useState('');
+  const [bio, setBio] = useState('');
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSubmit = (e) => {
+  // Auto-navigate after success
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
-    // Validate name
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
     if (!name.trim()) {
       setError('Full name is required');
       return;
     }
-
-    // Validate email
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Valid email is required');
-      return;
-    }
-
-    // Validate DOB
     if (!dob) {
       setError('Date of birth is required');
       return;
     }
+    if (!gender) {
+      setError('Please select your gender');
+      return;
+    }
+    if (!locationState) {
+      setError('Please select your state in Nigeria');
+      return;
+    }
+
+    // Verify age is >= 18
+    const dobDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - dobDate.getFullYear();
+    const m = today.getMonth() - dobDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      setError('You must be at least 18 years old to join MeetAm');
+      return;
+    }
 
     setIsSubmitting(true);
-    setError('');
 
-    // TODO: call auth API
-    setTimeout(() => {
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+            dob,
+            gender,
+            location_city: locationCity.trim(),
+            location_state: locationState,
+            bio: bio.trim(),
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (data?.user) {
+        // Insert/upsert profile row
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            user_id: data.user.id,
+            full_name: name.trim(),
+            display_name: name.trim(),
+            date_of_birth: dob,
+            age,
+            gender,
+            location_city: locationCity.trim(),
+            location_state: locationState,
+            state: locationState,
+            area: locationCity.trim(),
+            bio: bio.trim(),
+            about_me: bio.trim(),
+            is_active: true,
+          });
+
+        if (profileError) {
+          console.error('Profile creation note:', profileError);
+        }
+
+        setSuccess('Account created successfully! Redirecting to login…');
+      }
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please check your details.');
+    } finally {
       setIsSubmitting(false);
-      alert('Account created! Please check your email to verify.');
-    }, 1500);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md mx-auto">
-        <div className="glass-card p-5 sm:p-8 mb-6 sm:mb-8 rounded-2xl">
-          <div className="flex items-center gap-2 mb-5 sm:mb-6">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-emerald-500 to-pink-500 rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-white text-xs sm:text-sm font-bold">M</span>
+    <AuthLayout activeTab="register">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white tracking-tight">Create your intro</h2>
+        <p className="text-sm text-slate-400 mt-1">Join Nigeria's intentional dating community</p>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs sm:text-sm mb-5 leading-relaxed">
+          <LuCircleAlert size={16} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {success && (
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs sm:text-sm mb-5 leading-relaxed">
+          <LuCircleCheck size={16} className="shrink-0 mt-0.5" />
+          <span>{success}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Section 1: Credentials */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Full Name */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+              Full Name
+            </label>
+            <div className="relative">
+              <LuUser size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Adeyemi Adeleke"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+              />
             </div>
-            <span className="font-bold text-lg sm:text-xl tracking-tight text-white">MeetAm</span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-white mb-1.5 sm:mb-2">Create account</h2>
-          <p className="text-slate-300 text-xs sm:text-sm mb-5 sm:mb-6">Sign up to get started with MeetAm</p>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 sm:p-4 mb-5 sm:mb-6">
-              <p className="text-red-400 text-xs sm:text-sm font-medium mb-0.5">Error:</p>
-              <p className="text-white text-xs sm:text-sm">{error}</p>
+          {/* Email */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+              Email address
+            </label>
+            <div className="relative">
+              <LuMail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+              />
             </div>
-          )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          {/* Password */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+              Password
+            </label>
+            <div className="relative">
+              <LuLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="8+ characters"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+              >
+                {showPassword ? <LuEyeOff size={15} /> : <LuEye size={15} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <LuLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repeat password"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+              >
+                {showConfirmPassword ? <LuEyeOff size={15} /> : <LuEye size={15} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Personality / Matching Details */}
+        <div className="pt-2 border-t border-white/5 space-y-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Date of Birth */}
             <div>
-              <label className="block text-xs sm:text-sm text-white mb-1.5 sm:mb-2">Full name</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Date of Birth (18+)
+              </label>
               <div className="relative">
-                <LuUser size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="John Doe"
-                  className="input-field w-full pl-10 pr-4 h-11 sm:h-12 text-sm sm:text-base rounded-lg"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs sm:text-sm text-white mb-1.5 sm:mb-2">Email address</label>
-              <div className="relative">
-                <LuMail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  className="input-field w-full pl-10 pr-4 h-11 sm:h-12 text-sm sm:text-base rounded-lg"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-3">
-              <div>
-                <label className="block text-xs sm:text-sm text-white mb-1.5 sm:mb-2">Password</label>
-                <div className="relative">
-                  <LuLock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className="input-field w-full pl-10 pr-12 h-11 sm:h-12 text-sm sm:text-base rounded-lg"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-400 hover:text-emerald-300 transition-colors py-1"
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs sm:text-sm text-white mb-1.5 sm:mb-2">Confirm password</label>
-                <div className="relative">
-                  <LuLock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className="input-field w-full pl-10 pr-12 h-11 sm:h-12 text-sm sm:text-base rounded-lg"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={8}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-400 hover:text-emerald-300 transition-colors py-1"
-                  >
-                    {showConfirmPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <p className="text-xs text-slate-400 -mt-2">Minimum 8 characters</p>
-
-            <div>
-              <label className="block text-xs sm:text-sm text-white mb-1.5 sm:mb-2">Date of birth</label>
-              <div className="relative">
-                <LuCalendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+                <LuCalendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
                   type="date"
-                  className="input-field w-full pl-10 pr-4 text-white text-sm sm:text-base [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-slate-950/20 backdrop-blur border border-slate-500/30 rounded-lg h-11 sm:h-12 focus:bg-slate-950/30 focus:border-emerald-500 transition-colors appearance-none"
+                  required
                   value={dob}
                   onChange={(e) => setDob(e.target.value)}
-                  required
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 [color-scheme:dark] transition-all hover:border-white/20"
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-emerald-500 to-pink-500 text-white py-2.5 sm:py-3 rounded-xl text-sm sm:text-base font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 active:scale-[0.99] transition-all disabled:opacity-50"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Creating account...' : 'Create account'}
-            </button>
+            {/* Gender */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Gender
+              </label>
+              <div className="relative">
+                <LuUser size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  required
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all hover:border-white/20"
+                >
+                  <option value="" disabled className="bg-slate-900">Select Gender</option>
+                  <option value="male" className="bg-slate-900">Male</option>
+                  <option value="female" className="bg-slate-900">Female</option>
+                  <option value="other" className="bg-slate-900">Other</option>
+                </select>
+                <LuChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
 
-            <p className="mt-4 text-center text-xs sm:text-sm text-white">
-              Already have an account?{' '}
-              <Link to="/login" className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
-                Sign in
-              </Link>
-            </p>
-          </form>
+            {/* State */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                State in Nigeria
+              </label>
+              <div className="relative">
+                <LuMapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  required
+                  value={locationState}
+                  onChange={(e) => setLocationState(e.target.value)}
+                  className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all hover:border-white/20"
+                >
+                  <option value="" disabled className="bg-slate-900">Select State</option>
+                  {NIGERIAN_STATES.map((s) => (
+                    <option key={s} value={s} className="bg-slate-900">{s}</option>
+                  ))}
+                </select>
+                <LuChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* City */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                City / Area
+              </label>
+              <div className="relative">
+                <LuMapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  required
+                  value={locationCity}
+                  onChange={(e) => setLocationCity(e.target.value)}
+                  placeholder="e.g. Lekki, Ikeja, Wuse"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* About / Bio */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+              Personality Intro / Bio
+            </label>
+            <textarea
+              required
+              rows={3}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="What are you about? Your values, humor, interests, and what kind of partner you're hoping to meet…"
+              className="w-full p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none transition-all hover:border-white/20"
+            />
+          </div>
         </div>
 
-        <div className="text-center text-xs sm:text-sm text-slate-300 px-2">
-          By continuing, you agree to our{' '}
-          <Link to="/terms" className="text-emerald-400 hover:text-emerald-300 transition-colors underline-offset-2 hover:underline">
-            Terms of Service
-          </Link>
-        </div>
-      </div>
-    </div>
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full mt-3 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-pink-500 text-white text-sm font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+        >
+          {isSubmitting ? (
+            <span className="animate-spin h-5 w-5 border-2 border-white/30 border-t-white rounded-full" />
+          ) : (
+            <>
+              <span>Create My Intro</span>
+              <LuArrowRight size={16} />
+            </>
+          )}
+        </button>
+      </form>
+    </AuthLayout>
   );
 }

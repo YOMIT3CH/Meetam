@@ -1,0 +1,300 @@
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useCallback,
+  useState,
+  useMemo,
+} from 'react';
+import supabase from '../lib/supabase';
+import {
+  DEFAULT_INTENT_VALUES,
+} from '../lib/data';
+import { formatCountdown } from '../lib/format';
+
+const MeetAmContext = createContext(null);
+
+export function MeetAmProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const [creditsBalance, setCreditsBalance] = useState(0);
+  const [unlockedContacts, setUnlockedContacts] = useState([]);
+  const [recentlyUnlockedAt, setRecentlyUnlockedAt] = useState(null);
+  const [enableMediaUploads, setEnableMediaUploads] = useState(true);
+  const [enabledIntentValues, setEnabledIntentValues] = useState(
+    DEFAULT_INTENT_VALUES
+  );
+
+  const [hasOnboarded, setHasOnboarded] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('meetam_onboarded') === '1';
+  });
+  const [showOnboarding, setShowOnboarding] = useState(!hasOnboarded);
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmPayload, setConfirmPayload] = useState(null);
+
+  // ---- Session / auth ----
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      if (s) {
+        setUser(s.user);
+        loadUserData(s.user.id).catch(() => {});
+      } else {
+        setUser(null);
+        setCreditsBalance(0);
+        setUnlockedContacts([]);
+        setRecentlyUnlockedAt(null);
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        setSession(nextSession);
+        if (nextSession) {
+          setUser(nextSession.user);
+          loadUserData(nextSession.user.id).catch(() => {});
+        } else {
+          setUser(null);
+          setCreditsBalance(0);
+          setUnlockedContacts([]);
+          setRecentlyUnlockedAt(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ---- Data loaders ----
+  const loadUserData = useCallback(async (userId) => {
+    try {
+      const [w, uc] = await Promise.all([
+        supabase
+          .from('wallets')
+          .select('credits_balance')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('unlocked_contacts')
+          .select('unlocked_at, profile_id')
+          .eq('user_id', userId)
+          .order('unlocked_at', { ascending: false }),
+      ]);
+      setCreditsBalance(w?.data?.credits_balance ?? 0);
+      setUnlockedContacts(Array.isArray(uc?.data) ? uc.data : []);
+      setRecentlyUnlockedAt(
+        Array.isArray(uc?.data) && uc.data.length ? uc.data[0].unlocked_at : null
+      );
+    } catch (_err) {
+      setCreditsBalance(0);
+      setUnlockedContacts([]);
+      setRecentlyUnlockedAt(null);
+    }
+  }, []);
+
+  const refreshCredits = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('wallets')
+      .select('credits_balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    setCreditsBalance(data?.credits_balance ?? 0);
+  }, [user]);
+
+  const refreshUnlockedContacts = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('unlocked_contacts')
+      .select('unlocked_at, profile_id')
+      .eq('user_id', user.id)
+      .order('unlocked_at', { ascending: false });
+    setUnlockedContacts(Array.isArray(data) ? data : []);
+  }, [user]);
+
+  // ---- Feature flags from app_settings ----
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('key, value')
+          .eq('key', 'enable_media_uploads');
+        if (!cancelled && data && data.length > 0) {
+          setEnableMediaUploads(Boolean(data[0].value?.enable_media_uploads));
+        }
+        const { data: intentsData } = await supabase
+          .from('app_settings')
+          .select('key, value')
+          .eq('key', 'enabled_intents');
+        if (!cancelled && intentsData && intentsData.length > 0) {
+          const vals = Array.isArray(intentsData[0].value?.intents)
+            ? intentsData[0].value.intents.filter((v) => typeof v === 'string')
+            : [];
+          if (vals.length > 0) setEnabledIntentValues(vals);
+        }
+      } catch (_err) {
+        // Defaults are safe if the table changes.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+  // ---- RPCs ----
+  const unlockContact = useCallback(
+    async (profileId) => {
+      const { data, error } = await supabase.rpc(
+        'unlock_contact',
+        { p_profile_id: profileId },
+        { count: 'exact' }
+      );
+      if (error) {
+        const msg = error.message || String(error);
+        if (msg.includes('COOLDOWN_ACTIVE')) {
+          return { ok: false, error: 'COOLDOWN_ACTIVE', next_available_at: null };
+        }
+        if (msg.includes('INSUFFICIENT_CREDITS')) {
+          return { ok: false, error: 'INSUFFICIENT_CREDITS' };
+        }
+        return { ok: false, error: msg };
+      }
+      return data ?? { ok: true };
+    },
+    []
+  );
+
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, []);
+
+  const boostMyProfile = useCallback(async (profileId) => {
+    const { data, error } = await supabase.rpc(
+      'boost_my_profile',
+      { p_profile_id: profileId },
+      { count: 'exact' }
+    );
+    if (error) {
+      const msg = error.message || String(error);
+      if (msg.includes('INSUFFICIENT_CREDITS')) {
+        return { ok: false, error: 'INSUFFICIENT_CREDITS' };
+      }
+      if (msg.includes('FORBIDDEN')) {
+        return { ok: false, error: 'FORBIDDEN' };
+      }
+      return { ok: false, error: msg };
+    }
+    return data ?? { ok: true };
+  }, []);
+
+  const notifyMatch = useCallback(
+    (profileState, profileGender, profileId) => {
+      // Non-blocking fire-and-forget alert to matching subscribers.
+      fetch('/api/alerts/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: profileState,
+          gender: profileGender,
+          profile_id: profileId,
+        }),
+      }).catch(() => {});
+    },
+    []
+  );
+
+  // ---- Helpers ----
+  const isProfileUnlocked = useCallback(
+    (profileId) =>
+      unlockedContacts.some((c) => c.profile_id === profileId),
+    [unlockedContacts]
+  );
+
+  const cooldownMs = recentlyUnlockedAt
+    ? Math.max(0, new Date(recentlyUnlockedAt) - Date.now() + 24 * 60 * 60 * 1000)
+    : 0;
+
+  const value = useMemo(() => {
+    const sortedUnlocked = [...unlockedContacts].sort(
+      (a, b) => new Date(b.unlocked_at) - new Date(a.unlocked_at)
+    );
+    return {
+      user,
+      session,
+      loading,
+      creditsBalance,
+      unlockedContacts: sortedUnlocked,
+      recentlyUnlockedAt,
+      enableMediaUploads,
+      enabledIntentValues,
+      hasOnboarded,
+      showOnboarding,
+      setShowOnboarding,
+      showTopUp,
+      setShowTopUp,
+      showUnlock,
+      setShowUnlock,
+      showConfirm,
+      setShowConfirm,
+      confirmPayload,
+      setConfirmPayload,
+      refreshCredits,
+      refreshUnlockedContacts,
+      unlockContact,
+      boostMyProfile,
+      logout,
+      notifyMatch,
+      isProfileUnlocked,
+      cooldownMs,
+      cooldownUntilAt:
+        recentlyUnlockedAt
+          ? new Date(new Date(recentlyUnlockedAt).getTime() + 24 * 60 * 60 * 1000)
+          : null,
+      formatCountdown,
+    };
+  }, [
+    user,
+    session,
+    loading,
+    creditsBalance,
+    unlockedContacts,
+    recentlyUnlockedAt,
+    enableMediaUploads,
+    enabledIntentValues,
+    hasOnboarded,
+    showOnboarding,
+    showTopUp,
+    showUnlock,
+    showConfirm,
+    confirmPayload,
+    refreshCredits,
+    refreshUnlockedContacts,
+    unlockContact,
+    boostMyProfile,
+    logout,
+    notifyMatch,
+    isProfileUnlocked,
+    cooldownMs,
+  ]);
+
+  return (
+    <MeetAmContext.Provider value={value}>
+      {children}
+    </MeetAmContext.Provider>
+  );
+}
+
+export function useMeetAm() {
+  const ctx = useContext(MeetAmContext);
+  if (!ctx) throw new Error('useMeetAm must be used within MeetAmProvider');
+  return ctx;
+}

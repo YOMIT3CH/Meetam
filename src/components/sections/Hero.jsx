@@ -22,33 +22,37 @@ export default function Hero() {
             Now in Nigeria &bull; 36 states + FCT
           </div>
 
-          <h1 className="text-5xl lg:text-7xl font-bold text-white tracking-tight leading-tight mb-6">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white tracking-tight leading-tight mb-6">
             {HERO.headline}
           </h1>
 
-          <p className="text-lg lg:text-xl text-slate-300 mb-10 leading-relaxed">
+          <p className="text-base sm:text-lg lg:text-xl text-slate-300 mb-8 sm:mb-10 leading-relaxed max-w-xl mx-auto">
             {HERO.subhead}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="w-full sm:w-auto">
-              <button className="w-full bg-gradient-to-r from-emerald-500 to-pink-500 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-1 active:scale-95 transition-all">
-                {HERO.primaryCta}
-              </button>
+          <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4 justify-center">
+            <Link
+              to="/register"
+              className="w-full sm:w-auto inline-flex items-center justify-center bg-gradient-to-r from-emerald-500 to-pink-500 text-white px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:scale-95 transition-all text-center"
+            >
+              {HERO.primaryCta}
             </Link>
-            <a href="#how-it-works" className="w-full sm:w-auto">
-              <button className="w-full border border-white/10 text-white px-8 py-4 rounded-xl text-lg font-semibold bg-white/5 hover:bg-white/10 transition-all">
-                {HERO.secondaryCta}
-              </button>
+            <a
+              href="#how-it-works"
+              className="w-full sm:w-auto inline-flex items-center justify-center border border-white/10 text-white px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg font-semibold bg-white/5 hover:bg-white/10 transition-all text-center"
+            >
+              {HERO.secondaryCta}
             </a>
           </div>
 
-          <div className="mt-12 flex items-center justify-center gap-4 text-slate-500 text-sm">
-            <span className="flex items-center gap-1">
-              <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+          <div className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-slate-400 text-xs sm:text-sm">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               100% personality-first
             </span>
+            <span className="hidden sm:inline">&bull;</span>
             <span>Private by default</span>
+            <span className="hidden sm:inline">&bull;</span>
             <span>1 credit = ₦1,000</span>
           </div>
         </div>
