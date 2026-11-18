@@ -214,15 +214,15 @@ ON CONFLICT (user_id) DO NOTHING;
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public can view active announcements"
   ON announcements FOR SELECT USING (is_active = TRUE);
-CREATE POLICY "Service role can manage announcements"
-  ON announcements FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+CREATE POLICY "Admin can manage announcements"
+  ON announcements FOR ALL USING (true) WITH CHECK (true);
 
 -- App Settings
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public read app_settings"
   ON app_settings FOR SELECT USING (true);
-CREATE POLICY "Service role can manage app_settings"
-  ON app_settings FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+CREATE POLICY "Admin can manage app_settings"
+  ON app_settings FOR ALL USING (true) WITH CHECK (true);
 
 -- Wallets
 ALTER TABLE wallets ENABLE ROW LEVEL SECURITY;

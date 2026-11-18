@@ -178,7 +178,7 @@ export default function Admin() {
       }
 
       if (annData) {
-        setAnnouncementText(annData.message || '');
+        setAnnouncementText(annData.body || annData.title || annData.message || '');
         setAnnouncementActive(Boolean(annData.is_active));
       }
     } catch (err) {
@@ -377,30 +377,51 @@ export default function Admin() {
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     setSavingSettings(true);
-    try {
-      // 1. Update bank details in app_settings
-      await supabase
-        .from('app_settings')
-        .upsert({
-          key: 'bank_details',
-          value: {
-            bankName: settingsBankName.trim(),
-            accountName: settingsAccountName.trim(),
-            accountNumber: settingsAccountNumber.trim(),
-            supportWhatsapp: settingsWhatsApp.trim(),
-          },
-          description: 'Company bank transfer account details',
-        });
+    const bankDetailsPayload = {
+      bankName: settingsBankName.trim(),
+      accountName: settingsAccountName.trim(),
+      accountNumber: settingsAccountNumber.trim(),
+      supportWhatsapp: settingsWhatsApp.trim(),
+    };
 
-      // 2. Update announcement banner
-      await supabase
-        .from('announcements')
-        .upsert({
-          id: '00000000-0000-0000-0000-000000000001',
-          message: announcementText.trim(),
-          is_active: announcementActive,
-          updated_at: new Date().toISOString(),
-        });
+    try {
+      // 1. Try dedicated admin RPC first (SECURITY DEFINER, bypasses RLS)
+      const { error: rpcErr } = await supabase.rpc('admin_save_settings', {
+        p_bank_details: bankDetailsPayload,
+        p_announcement_text: announcementText.trim(),
+        p_announcement_active: announcementActive,
+      });
+
+      if (rpcErr) {
+        // Fallback: direct table upserts with matching table schema
+        // 1. Update bank details in app_settings
+        await supabase
+          .from('app_settings')
+          .upsert({
+            key: 'bank_details',
+            value: bankDetailsPayload,
+            description: 'Company bank transfer account details',
+            updated_at: new Date().toISOString(),
+          });
+
+        // 2. Update announcement banner (columns: id, title, body, kind, is_active)
+        await supabase
+          .from('announcements')
+          .upsert({
+            id: '00000000-0000-0000-0000-000000000001',
+            title: 'Announcement',
+            body: announcementText.trim(),
+            kind: 'info',
+            is_active: announcementActive,
+          });
+      }
+
+      // Also persist to localStorage as instant offline fallback
+      try {
+        localStorage.setItem('meetam_bank_details', JSON.stringify(bankDetailsPayload));
+      } catch (err) {
+        // ignore
+      }
 
       setSettingsSaved(true);
       showNotification('Settings and bank details updated successfully!');

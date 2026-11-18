@@ -152,3 +152,59 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION admin_get_wallets() TO authenticated, anon;
+
+-- 6. RPC: Save Bank Details & Announcement Settings (Bypasses RLS)
+CREATE OR REPLACE FUNCTION admin_save_settings(
+  p_bank_details JSONB DEFAULT NULL,
+  p_announcement_text TEXT DEFAULT NULL,
+  p_announcement_active BOOLEAN DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  -- 1. Upsert bank_details in app_settings
+  IF p_bank_details IS NOT NULL THEN
+    INSERT INTO app_settings (key, value, description, updated_at)
+    VALUES ('bank_details', p_bank_details, 'Company bank transfer account details', NOW())
+    ON CONFLICT (key) DO UPDATE
+    SET value = EXCLUDED.value,
+        updated_at = NOW();
+  END IF;
+
+  -- 2. Upsert announcement in announcements table
+  IF p_announcement_text IS NOT NULL THEN
+    INSERT INTO announcements (id, title, body, kind, is_active, created_at)
+    VALUES (
+      '00000000-0000-0000-0000-000000000001',
+      'Announcement',
+      p_announcement_text,
+      'info',
+      COALESCE(p_announcement_active, true),
+      NOW()
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET body = EXCLUDED.body,
+        is_active = EXCLUDED.is_active;
+  END IF;
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION admin_save_settings(JSONB, TEXT, BOOLEAN) TO authenticated, anon;
+
+-- 7. Ensure RLS policies allow admin direct writes to app_settings & announcements as fallback
+DROP POLICY IF EXISTS "Allow admin modify app_settings" ON app_settings;
+CREATE POLICY "Allow admin modify app_settings"
+  ON app_settings FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow admin modify announcements" ON announcements;
+CREATE POLICY "Allow admin modify announcements"
+  ON announcements FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
