@@ -16,6 +16,9 @@ import {
   LuX,
   LuCircleAlert,
   LuRocket,
+  LuMessageCircle,
+  LuGhost,
+  LuClock,
 } from 'react-icons/lu';
 
 export default function Dashboard() {
@@ -221,12 +224,18 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Cooldown notice */}
+        {/* Cooldown notice - Continuous real-time countdown */}
         {cooldownMs > 0 && (
-          <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-300">
-            <LuCircleAlert size={16} />
-            Next contact unlock available in{' '}
-            <span className="font-semibold">{formatCountdown(cooldownMs)}</span>
+          <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-4 py-3 text-sm text-amber-200 shadow-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <LuClock size={16} className="text-amber-400 shrink-0" />
+            <span>Next contact unlock available in:</span>
+            <span className="font-mono font-bold text-amber-300 bg-amber-500/25 border border-amber-500/30 px-2 py-0.5 rounded-md">
+              {formatCountdown(cooldownMs)}
+            </span>
           </div>
         )}
 
@@ -306,23 +315,54 @@ export default function Dashboard() {
 
         {/* Unlocked contacts */}
         {unlockedContacts.length > 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
             <h3 className="font-bold text-white mb-4 flex items-center gap-2">
               <LuLockOpen size={16} className="text-pink-400" />
-              Unlocked Contacts ({unlockedContacts.length})
+              <span>Unlocked Contacts ({unlockedContacts.length})</span>
             </h3>
-            <div className="space-y-2">
-              {unlockedContacts.map((c) => (
-                <div
-                  key={c.profile_id}
-                  className="flex items-center justify-between text-sm border border-white/5 rounded-xl px-4 py-3 bg-white/3"
-                >
-                  <span className="text-slate-300 font-mono text-xs truncate">{c.profile_id}</span>
-                  <span className="text-slate-500 text-xs shrink-0 ml-3">
-                    {new Date(c.unlocked_at).toLocaleDateString()}
-                  </span>
-                </div>
-              ))}
+            <div className="space-y-2.5">
+              {unlockedContacts.map((c) => {
+                const name = c.profiles?.display_name || c.profiles?.full_name || 'Member';
+                const wa = c.profiles?.whatsapp_number || c.whatsapp_number;
+                const snap = c.profiles?.snapchat_handle || c.snapchat_handle;
+
+                return (
+                  <div
+                    key={c.profile_id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm border border-white/5 rounded-2xl p-3.5 bg-slate-900/60 hover:bg-slate-900 transition-colors"
+                  >
+                    <div>
+                      <p className="font-bold text-white text-sm">{name}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Unlocked on {new Date(c.unlocked_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {wa && (
+                        <a
+                          href={`https://wa.me/${wa.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-semibold hover:bg-green-500 hover:text-white transition-colors"
+                        >
+                          <LuMessageCircle size={14} />
+                          <span>WhatsApp: {wa}</span>
+                        </a>
+                      )}
+                      {snap && (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 text-xs font-semibold">
+                          <LuGhost size={14} />
+                          <span>Snapchat: {snap.startsWith('@') ? snap : `@${snap}`}</span>
+                        </span>
+                      )}
+                      {!wa && !snap && (
+                        <span className="text-xs text-slate-400 italic">No handles attached</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

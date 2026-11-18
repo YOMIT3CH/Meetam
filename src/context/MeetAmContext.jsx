@@ -27,6 +27,15 @@ export function MeetAmProvider({ children }) {
     DEFAULT_INTENT_VALUES
   );
 
+  // Live 1-second clock so countdown timer ticks continuously without page refresh
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [hasOnboarded, setHasOnboarded] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('meetam_onboarded') === '1';
@@ -83,14 +92,28 @@ export function MeetAmProvider({ children }) {
           .maybeSingle(),
         supabase
           .from('unlocked_contacts')
-          .select('unlocked_at, profile_id')
+          .select('unlocked_at, profile_id, profiles(display_name, full_name, whatsapp_number, snapchat_handle)')
           .eq('user_id', userId)
           .order('unlocked_at', { ascending: false }),
       ]);
       setCreditsBalance(w?.data?.credits_balance ?? 0);
-      setUnlockedContacts(Array.isArray(uc?.data) ? uc.data : []);
+
+      let contacts = [];
+      if (Array.isArray(uc?.data)) {
+        contacts = uc.data;
+      } else {
+        // Fallback without join in case of schema discrepancy
+        const fallback = await supabase
+          .from('unlocked_contacts')
+          .select('unlocked_at, profile_id')
+          .eq('user_id', userId)
+          .order('unlocked_at', { ascending: false });
+        if (Array.isArray(fallback?.data)) contacts = fallback.data;
+      }
+
+      setUnlockedContacts(contacts);
       setRecentlyUnlockedAt(
-        Array.isArray(uc?.data) && uc.data.length ? uc.data[0].unlocked_at : null
+        contacts.length ? contacts[0].unlocked_at : null
       );
     } catch (_err) {
       setCreditsBalance(0);
@@ -111,12 +134,34 @@ export function MeetAmProvider({ children }) {
 
   const refreshUnlockedContacts = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('unlocked_contacts')
-      .select('unlocked_at, profile_id')
-      .eq('user_id', user.id)
-      .order('unlocked_at', { ascending: false });
-    setUnlockedContacts(Array.isArray(data) ? data : []);
+    try {
+      const { data, error } = await supabase
+        .from('unlocked_contacts')
+        .select('unlocked_at, profile_id, profiles(display_name, full_name, whatsapp_number, snapchat_handle)')
+        .eq('user_id', user.id)
+        .order('unlocked_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        setUnlockedContacts(data);
+        if (data.length > 0) {
+          setRecentlyUnlockedAt(data[0].unlocked_at);
+        }
+      } else {
+        const fallback = await supabase
+          .from('unlocked_contacts')
+          .select('unlocked_at, profile_id')
+          .eq('user_id', user.id)
+          .order('unlocked_at', { ascending: false });
+        if (Array.isArray(fallback?.data)) {
+          setUnlockedContacts(fallback.data);
+          if (fallback.data.length > 0) {
+            setRecentlyUnlockedAt(fallback.data[0].unlocked_at);
+          }
+        }
+      }
+    } catch (_err) {
+      // Ignored
+    }
   }, [user]);
 
   // ---- Feature flags from app_settings ----
@@ -150,6 +195,7 @@ export function MeetAmProvider({ children }) {
       cancelled = true;
     };
   }, [user]);
+
   // ---- RPCs ----
   const unlockContact = useCallback(
     async (profileId) => {
@@ -168,6 +214,27 @@ export function MeetAmProvider({ children }) {
         }
         return { ok: false, error: msg };
       }
+
+      if (data && data.ok) {
+        const unlockTime = new Date().toISOString();
+        setRecentlyUnlockedAt(unlockTime);
+        setNow(Date.now());
+        setCreditsBalance((prev) => Math.max(0, prev - 1));
+        setUnlockedContacts((prev) => [
+          {
+            profile_id: profileId,
+            unlocked_at: unlockTime,
+            whatsapp_number: data.whatsapp_number,
+            snapchat_handle: data.snapchat_handle,
+            profiles: {
+              whatsapp_number: data.whatsapp_number,
+              snapchat_handle: data.snapchat_handle,
+            },
+          },
+          ...prev.filter((c) => c.profile_id !== profileId),
+        ]);
+      }
+
       return data ?? { ok: true };
     },
     []
@@ -198,7 +265,6 @@ export function MeetAmProvider({ children }) {
 
   const notifyMatch = useCallback(
     (profileState, profileGender, profileId) => {
-      // Non-blocking fire-and-forget alert to matching subscribers.
       fetch('/api/alerts/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -219,9 +285,27 @@ export function MeetAmProvider({ children }) {
     [unlockedContacts]
   );
 
-  const cooldownMs = recentlyUnlockedAt
-    ? Math.max(0, new Date(recentlyUnlockedAt) - Date.now() + 24 * 60 * 60 * 1000)
+  const getUnlockedContact = useCallback(
+    (profileId) => {
+      const match = unlockedContacts.find(
+        (c) => c.profile_id === profileId
+      );
+      if (!match) return null;
+      return {
+        whatsapp: match.whatsapp_number || match.profiles?.whatsapp_number || null,
+        snapchat: match.snapchat_handle || match.profiles?.snapchat_handle || null,
+        unlocked_at: match.unlocked_at,
+      };
+    },
+    [unlockedContacts]
+  );
+
+  // Live countdown remaining in ms
+  const cooldownUntilMs = recentlyUnlockedAt
+    ? new Date(recentlyUnlockedAt).getTime() + 24 * 60 * 60 * 1000
     : 0;
+
+  const cooldownMs = Math.max(0, cooldownUntilMs - now);
 
   const value = useMemo(() => {
     const sortedUnlocked = [...unlockedContacts].sort(
@@ -254,6 +338,7 @@ export function MeetAmProvider({ children }) {
       logout,
       notifyMatch,
       isProfileUnlocked,
+      getUnlockedContact,
       cooldownMs,
       cooldownUntilAt:
         recentlyUnlockedAt
@@ -283,6 +368,7 @@ export function MeetAmProvider({ children }) {
     logout,
     notifyMatch,
     isProfileUnlocked,
+    getUnlockedContact,
     cooldownMs,
   ]);
 
@@ -295,6 +381,8 @@ export function MeetAmProvider({ children }) {
 
 export function useMeetAm() {
   const ctx = useContext(MeetAmContext);
-  if (!ctx) throw new Error('useMeetAm must be used within MeetAmProvider');
+  if (!ctx) {
+    throw new Error('useMeetAm must be used within a MeetAmProvider');
+  }
   return ctx;
 }

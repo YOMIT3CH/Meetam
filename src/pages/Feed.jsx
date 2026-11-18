@@ -43,6 +43,7 @@ export default function Feed() {
     formatCountdown,
     unlockContact,
     isProfileUnlocked,
+    getUnlockedContact,
     refreshCredits,
     refreshUnlockedContacts,
     showTopUp,
@@ -124,7 +125,7 @@ export default function Feed() {
     } else if (result?.error === 'INSUFFICIENT_CREDITS') {
       setShowTopUp(true);
     } else if (result?.error === 'COOLDOWN_ACTIVE') {
-      // cooldownMs from context reflects this
+      // Cooldown timer is live ticking in context
     }
     setUnlockingId(null);
   };
@@ -171,12 +172,18 @@ export default function Feed() {
         onCompleted={() => { setShowTopUp(false); refreshCredits(); }}
       />
 
-      {/* Cooldown banner */}
+      {/* Live Ticking Cooldown Banner (Continuous Countdown, No Page Refresh Required) */}
       {cooldownMs > 0 && (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-center gap-1.5 text-xs text-amber-300">
-          <LuClock size={13} className="text-amber-400" />
-          <span>Next unlock available in</span>
-          <span className="font-semibold">{formatCountdown(cooldownMs)}</span>
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 flex items-center justify-center gap-2 text-xs sm:text-sm text-amber-200">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          <LuClock size={15} className="text-amber-400 shrink-0" />
+          <span>Next contact unlock available in:</span>
+          <span className="font-mono font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-md">
+            {formatCountdown(cooldownMs)}
+          </span>
         </div>
       )}
 
@@ -291,9 +298,12 @@ export default function Feed() {
                 profile={profile}
                 isUnlocked={isProfileUnlocked(profile.id)}
                 unlockData={unlockResult[profile.id]}
+                getUnlockedContact={getUnlockedContact}
                 onUnlock={() => handleUnlock(profile.id)}
                 unlocking={unlockingId === profile.id}
                 cooldownActive={cooldownMs > 0}
+                cooldownMs={cooldownMs}
+                formatCountdown={formatCountdown}
                 creditsBalance={creditsBalance}
               />
             ))}
@@ -323,9 +333,25 @@ export default function Feed() {
 }
 
 // ---- Comprehensive Dating Intro Profile Card ----
-function ProfileCard({ profile, isUnlocked, unlockData, onUnlock, unlocking, cooldownActive, creditsBalance }) {
+function ProfileCard({
+  profile,
+  isUnlocked,
+  unlockData,
+  getUnlockedContact,
+  onUnlock,
+  unlocking,
+  cooldownActive,
+  cooldownMs,
+  formatCountdown,
+  creditsBalance,
+}) {
   const intentLabel = INTENT_LOOKUP[profile.intent] || profile.intent || null;
-  const revealed = isUnlocked || !!unlockData;
+
+  // Retrieve contact details from active unlock state or persisted unlockedContacts
+  const storedContact = getUnlockedContact ? getUnlockedContact(profile.id) : null;
+  const whatsappNumber = unlockData?.whatsapp || storedContact?.whatsapp || profile.whatsapp_number || null;
+  const snapchatHandle = unlockData?.snapchat || storedContact?.snapchat || profile.snapchat_handle || null;
+  const revealed = isUnlocked || !!unlockData || !!storedContact;
 
   const displayName = profile.display_name || profile.full_name || 'Anonymous';
   const age = profile.age;
@@ -478,28 +504,69 @@ function ProfileCard({ profile, isUnlocked, unlockData, onUnlock, unlocking, coo
       {/* Contact Reveal / Unlock CTA */}
       <div className="mt-auto pt-3 border-t border-white/10">
         {revealed ? (
-          <div className="space-y-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25">
-            <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-              <LuLockOpen size={13} />
-              <span>Contact Unlocked</span>
-            </p>
-            <div className="space-y-1.5">
-              {(unlockData?.whatsapp || profile.whatsapp_number) && (
+          <div className="space-y-2.5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                <LuLockOpen size={13} className="text-emerald-400" />
+                <span>Contact Unlocked</span>
+              </p>
+              <span className="text-[10px] text-emerald-400/90 font-semibold bg-emerald-500/20 px-2 py-0.5 rounded-full">
+                Revealed
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {whatsappNumber ? (
                 <a
-                  href={`https://wa.me/${(unlockData?.whatsapp || profile.whatsapp_number || '').replace(/\D/g, '')}`}
+                  href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-emerald-500/20"
+                  className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/80 hover:bg-emerald-950/70 border border-emerald-500/30 text-white transition-all group cursor-pointer shadow-sm"
                 >
-                  <LuMessageCircle size={16} className="shrink-0 text-green-400" />
-                  <span>WhatsApp: {unlockData?.whatsapp || profile.whatsapp_number}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 flex items-center justify-center shrink-0">
+                      <LuMessageCircle size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-400 block uppercase tracking-wider leading-none mb-0.5">
+                        WhatsApp Number
+                      </span>
+                      <span className="text-xs sm:text-sm font-mono font-bold text-emerald-300 truncate block">
+                        {whatsappNumber}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-green-500 hover:bg-green-400 text-white text-[11px] font-bold shrink-0 transition-colors">
+                    Chat &rarr;
+                  </span>
                 </a>
-              )}
-              {(unlockData?.snapchat || profile.snapchat_handle) && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-yellow-300 bg-white/5 px-3 py-2 rounded-xl border border-yellow-500/20">
-                  <LuGhost size={16} className="shrink-0 text-yellow-400" />
-                  <span>Snapchat: {unlockData?.snapchat || profile.snapchat_handle}</span>
+              ) : null}
+
+              {snapchatHandle ? (
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/80 border border-yellow-500/30 text-white shadow-sm">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-yellow-500/20 text-yellow-400 flex items-center justify-center shrink-0">
+                      <LuGhost size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-400 block uppercase tracking-wider leading-none mb-0.5">
+                        Snapchat Handle
+                      </span>
+                      <span className="text-xs sm:text-sm font-mono font-bold text-yellow-300 truncate block">
+                        {snapchatHandle.startsWith('@') ? snapchatHandle : `@${snapchatHandle}`}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 text-[10px] font-bold shrink-0">
+                    Snap
+                  </span>
                 </div>
+              ) : null}
+
+              {!whatsappNumber && !snapchatHandle && (
+                <p className="text-xs text-slate-300 italic p-2 bg-slate-950/50 rounded-lg">
+                  Contact unlocked, but user has not attached WhatsApp or Snapchat handles yet.
+                </p>
               )}
             </div>
           </div>
@@ -511,7 +578,7 @@ function ProfileCard({ profile, isUnlocked, unlockData, onUnlock, unlocking, coo
               unlocking
                 ? 'bg-white/5 border border-white/10 text-slate-500 cursor-wait'
                 : cooldownActive
-                ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 cursor-not-allowed'
+                ? 'bg-amber-500/10 border border-amber-500/25 text-amber-300 cursor-not-allowed'
                 : creditsBalance < 1
                 ? 'bg-white/5 border border-white/10 text-slate-400 hover:border-emerald-400/40 hover:text-white'
                 : 'bg-gradient-to-r from-emerald-500 to-pink-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-[0.99]'
@@ -521,8 +588,8 @@ function ProfileCard({ profile, isUnlocked, unlockData, onUnlock, unlocking, coo
               <span className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full" />
             ) : cooldownActive ? (
               <>
-                <LuLock size={15} />
-                <span>Cooldown active</span>
+                <LuClock size={15} className="text-amber-400 animate-pulse" />
+                <span>Next Unlock: {formatCountdown(cooldownMs)}</span>
               </>
             ) : creditsBalance < 1 ? (
               <>
