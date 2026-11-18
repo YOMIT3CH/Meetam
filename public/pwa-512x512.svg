@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+    <filter id="shadow512" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-opacity="0.35" flood-color="#000000" />
+    </filter>
+  </defs>
+  <!-- Background squircle -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad512)" />
+  <!-- Inner soft highlight -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="none" stroke="#ffffff" stroke-width="4" stroke-opacity="0.25" />
+  <!-- Letter M shape -->
+  <path d="M140 364 V168 L198 264 L256 168 L314 264 L372 168 V364" fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow512)" />
+  <!-- Floating heart top-right -->
+  <path d="M380 114 C380 100 366 92 356 100 C346 92 332 100 332 114 C332 134 356 150 356 150 C356 150 380 134 380 114 Z" fill="#ffffff" filter="url(#shadow512)" />
+</svg>

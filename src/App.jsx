@@ -9,10 +9,12 @@ import Admin from './pages/Admin.jsx';
 import Support from './pages/Support.jsx';
 import Profile from './pages/Profile.jsx';
 import Feed from './pages/Feed.jsx';
+import PWAInstallBanner from './components/PWAInstallBanner.jsx';
 
 function App() {
   return (
     <BrowserRouter>
+      <PWAInstallBanner />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />

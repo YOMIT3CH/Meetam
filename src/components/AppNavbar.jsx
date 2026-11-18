@@ -7,6 +7,7 @@ import {
   LuX,
   LuCompass,
   LuUser,
+  LuDownload,
 } from 'react-icons/lu';
 import { useMeetAm } from '../context/MeetAmContext';
 
@@ -167,6 +168,17 @@ export default function AppNavbar() {
               <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                 {creditsBalance}
               </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileOpen(false);
+                window.dispatchEvent(new CustomEvent('meetam_trigger_pwa_install'));
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+            >
+              <LuDownload size={18} className="text-emerald-400" />
+              <span>Install MeetAm App</span>
             </button>
 
             <button

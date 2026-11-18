@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="50%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#fdf2f8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.3" flood-color="#000000" />
+    </filter>
+  </defs>
+  <!-- Background squircle -->
+  <rect x="8" y="8" width="176" height="176" rx="42" fill="url(#bgGrad)" />
+  <!-- Inner soft border -->
+  <rect x="8" y="8" width="176" height="176" rx="42" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.25" />
+  <!-- Letter M shape -->
+  <path d="M52 136 V62 L74 98 L96 62 L118 98 L140 62 V136" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)" />
+  <!-- Floating heart dot top-right -->
+  <path d="M142 42 C142 37 137 34 133 37 C129 34 124 37 124 42 C124 49 133 55 133 55 C133 55 142 49 142 42 Z" fill="#ffffff" filter="url(#shadow)" />
+</svg>

@@ -3,11 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- PWA primary tags -->
     <title>MeetAm — Personality-First Dating for Nigerian Singles</title>
+    <meta name="description" content="Nigeria's personality-first dating app. Discover real, intentional connections based on character, tribe, and intent." />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#020617" />
+    
+    <!-- iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MeetAm" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.svg" />
+    
+    <!-- Microsoft / Windows Tile -->
+    <meta name="msapplication-TileColor" content="#020617" />
+    <meta name="msapplication-TileImage" content="/pwa-192x192.svg" />
   </head>
-  <body>
+  <body class="bg-slate-950 text-white selection:bg-emerald-500 selection:text-white">
     <div id="app"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Register PWA service worker
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.log('SW registration note:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
