@@ -130,3 +130,25 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION admin_get_transactions() TO authenticated, anon;
+
+-- 5. RPC: Get All Wallets for Admin Panel (Bypasses RLS so Admin can see balances)
+CREATE OR REPLACE FUNCTION admin_get_wallets()
+RETURNS TABLE (
+  user_id UUID,
+  credits_balance INTEGER,
+  updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    w.user_id,
+    w.credits_balance,
+    w.updated_at
+  FROM wallets w;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION admin_get_wallets() TO authenticated, anon;
