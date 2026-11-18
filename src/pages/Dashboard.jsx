@@ -277,7 +277,21 @@ export default function Dashboard() {
               <Field label="Religion" value={profile.religion} />
               <Field label="Occupation" value={profile.occupation} />
               <Field label="Height" value={profile.height} />
-              <Field label="Body Type" value={profile.body_type} />
+              <Field
+                label="Body Type"
+                value={
+                  profile.body_type
+                    ? {
+                        slim: 'Slim',
+                        average: 'Average',
+                        athletic: 'Athletic',
+                        curvy: 'Curvy',
+                        plus_size: 'Plus Size',
+                        muscular: 'Muscular',
+                      }[profile.body_type.toLowerCase()] || profile.body_type
+                    : null
+                }
+              />
               <div className="col-span-2 sm:col-span-3">
                 <Field label="About Me" value={profile.about_me} multiline />
               </div>
@@ -464,7 +478,9 @@ export default function Dashboard() {
                   <option value="slim">Slim</option>
                   <option value="average">Average</option>
                   <option value="athletic">Athletic</option>
+                  <option value="curvy">Curvy</option>
                   <option value="plus_size">Plus Size</option>
+                  <option value="muscular">Muscular</option>
                 </select>
               </FormField>
 

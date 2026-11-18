@@ -16,15 +16,15 @@ export function waLink(number) {
 }
 
 export function formatCountdown(ms) {
-  if (!ms || ms < 0) return 'Available now';
+  if (!ms || ms <= 0) return 'Available now';
   const total = Math.max(0, Math.ceil(ms / 1000));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const parts = [];
   if (h > 0) parts.push(`${h}h`);
-  if (m > 0 || h === 0) parts.push(`${m}m`);
-  parts.push(`${s}s`);
+  parts.push(`${m}m`);
+  parts.push(`${s.toString().padStart(2, '0')}s`);
   return parts.join(' ');
 }
 

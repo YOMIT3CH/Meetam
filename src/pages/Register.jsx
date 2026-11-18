@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import supabase from '../lib/supabase';
 import AuthLayout from '../components/AuthLayout';
-import { NIGERIAN_STATES } from '../lib/data';
+import { NIGERIAN_STATES, INTENTS, BODY_TYPES } from '../lib/data';
 import {
   LuMail,
   LuLock,
@@ -15,21 +15,33 @@ import {
   LuCircleCheck,
   LuArrowRight,
   LuChevronDown,
+  LuBriefcase,
+  LuSparkles,
+  LuGlobe,
+  LuHeart,
 } from 'react-icons/lu';
 
 export default function Register() {
   const navigate = useNavigate();
 
-  // State Declarations
+  // State Declarations - Account
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // State Declarations - Dating Intro & Specs
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('');
-  const [locationCity, setLocationCity] = useState('');
   const [locationState, setLocationState] = useState('');
+  const [locationCity, setLocationCity] = useState('');
+  const [intent, setIntent] = useState('serious_relationship');
+  const [tribe, setTribe] = useState('');
+  const [occupation, setOccupation] = useState('');
+  const [bodyType, setBodyType] = useState('');
+  const [height, setHeight] = useState('');
   const [bio, setBio] = useState('');
+  const [lookingFor, setLookingFor] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -60,33 +72,17 @@ export default function Register() {
       setError('Password must be at least 8 characters long');
       return;
     }
-    if (!name.trim()) {
-      setError('Full name is required');
-      return;
-    }
-    if (!dob) {
-      setError('Date of birth is required');
-      return;
-    }
-    if (!gender) {
-      setError('Please select your gender');
-      return;
-    }
-    if (!locationState) {
-      setError('Please select your state in Nigeria');
-      return;
-    }
 
-    // Verify age is >= 18
-    const dobDate = new Date(dob);
+    // Age validation (18+)
+    const birthDate = new Date(dob);
     const today = new Date();
-    let age = today.getFullYear() - dobDate.getFullYear();
-    const m = today.getMonth() - dobDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dobDate.getDate())) {
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
 
-    if (age < 18) {
+    if (isNaN(age) || age < 18) {
       setError('You must be at least 18 years old to join MeetAm');
       return;
     }
@@ -94,8 +90,9 @@ export default function Register() {
     setIsSubmitting(true);
 
     try {
+      // 1. Sign up user
       const { data, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
+        email,
         password,
         options: {
           data: {
@@ -105,6 +102,12 @@ export default function Register() {
             location_city: locationCity.trim(),
             location_state: locationState,
             bio: bio.trim(),
+            intent,
+            tribe: tribe.trim(),
+            occupation: occupation.trim(),
+            body_type: bodyType,
+            height: height.trim(),
+            looking_for: lookingFor.trim(),
           },
         },
       });
@@ -112,7 +115,7 @@ export default function Register() {
       if (authError) throw authError;
 
       if (data?.user) {
-        // Insert/upsert profile row
+        // Insert/upsert profile row with all dating intro attributes
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -127,8 +130,14 @@ export default function Register() {
             location_state: locationState,
             state: locationState,
             area: locationCity.trim(),
+            intent,
+            tribe: tribe.trim(),
+            occupation: occupation.trim(),
+            body_type: bodyType,
+            height: height.trim(),
             bio: bio.trim(),
             about_me: bio.trim(),
+            looking_for: lookingFor.trim(),
             is_active: true,
           });
 
@@ -160,19 +169,19 @@ export default function Register() {
       )}
 
       {success && (
-        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs sm:text-sm mb-5 leading-relaxed">
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs sm:text-sm mb-5 leading-relaxed">
           <LuCircleCheck size={16} className="shrink-0 mt-0.5" />
           <span>{success}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Section 1: Credentials */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        {/* Section 1: Account Credentials */}
+        <div className="space-y-3.5">
           {/* Full Name */}
-          <div className="sm:col-span-2">
+          <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-              Full Name
+              Full Name / Display Name <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <LuUser size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -188,9 +197,9 @@ export default function Register() {
           </div>
 
           {/* Email */}
-          <div className="sm:col-span-2">
+          <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-              Email address
+              Email Address <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <LuMail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -208,7 +217,7 @@ export default function Register() {
           {/* Password */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-              Password
+              Password <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <LuLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -224,7 +233,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
               >
                 {showPassword ? <LuEyeOff size={15} /> : <LuEye size={15} />}
               </button>
@@ -234,7 +243,7 @@ export default function Register() {
           {/* Confirm Password */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-              Confirm Password
+              Confirm Password <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <LuLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -250,7 +259,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
               >
                 {showConfirmPassword ? <LuEyeOff size={15} /> : <LuEye size={15} />}
               </button>
@@ -258,13 +267,17 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Section 2: Personality / Matching Details */}
-        <div className="pt-2 border-t border-white/5 space-y-3.5">
+        {/* Section 2: Dating Intro, State, Gender, Tribe, Body Type, Occupation */}
+        <div className="pt-3 border-t border-white/10 space-y-3.5">
+          <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+            Dating Card &amp; Specs
+          </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Date of Birth */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-                Date of Birth (18+)
+                Date of Birth (18+) <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <LuCalendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -281,7 +294,7 @@ export default function Register() {
             {/* Gender */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-                Gender
+                Gender <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <LuUser size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -303,7 +316,7 @@ export default function Register() {
             {/* State */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-                State in Nigeria
+                State in Nigeria <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <LuMapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -322,10 +335,10 @@ export default function Register() {
               </div>
             </div>
 
-            {/* City */}
+            {/* City / Area */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-                City / Area
+                City / Area <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <LuMapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -334,25 +347,114 @@ export default function Register() {
                   required
                   value={locationCity}
                   onChange={(e) => setLocationCity(e.target.value)}
-                  placeholder="e.g. Lekki, Ikeja, Wuse"
+                  placeholder="e.g. Lekki, Ikeja, Garki, Port Harcourt"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+                />
+              </div>
+            </div>
+
+            {/* Relationship Intent */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Relationship Intent
+              </label>
+              <div className="relative">
+                <LuHeart size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-pink-400 pointer-events-none" />
+                <select
+                  value={intent}
+                  onChange={(e) => setIntent(e.target.value)}
+                  className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all hover:border-white/20"
+                >
+                  {INTENTS.map((i) => (
+                    <option key={i.value} value={i.value} className="bg-slate-900">{i.label}</option>
+                  ))}
+                </select>
+                <LuChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Body Type */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Body Type
+              </label>
+              <div className="relative">
+                <LuSparkles size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                <select
+                  value={bodyType}
+                  onChange={(e) => setBodyType(e.target.value)}
+                  className="w-full appearance-none pl-10 pr-9 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all hover:border-white/20"
+                >
+                  <option value="" className="bg-slate-900">Select Body Type</option>
+                  {BODY_TYPES.map((bt) => (
+                    <option key={bt.value} value={bt.value} className="bg-slate-900">{bt.label}</option>
+                  ))}
+                </select>
+                <LuChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Tribe / Ethnicity */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Tribe / Ethnicity
+              </label>
+              <div className="relative">
+                <LuGlobe size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={tribe}
+                  onChange={(e) => setTribe(e.target.value)}
+                  placeholder="e.g. Yoruba, Igbo, Hausa, Edo"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+                />
+              </div>
+            </div>
+
+            {/* Occupation */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Occupation / Career
+              </label>
+              <div className="relative">
+                <LuBriefcase size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  placeholder="e.g. Software Engineer, Doctor, Trader"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
                 />
               </div>
             </div>
           </div>
 
-          {/* About / Bio */}
+          {/* Personality Intro / Bio */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
-              Personality Intro / Bio
+              Personality Intro / Bio <span className="text-red-400">*</span>
             </label>
             <textarea
               required
               rows={3}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="What are you about? Your values, humor, interests, and what kind of partner you're hoping to meet…"
+              placeholder="What are you about? Your personality, values, humor, lifestyle, and character…"
               className="w-full p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none transition-all hover:border-white/20"
+            />
+          </div>
+
+          {/* Looking For */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+              What kind of partner are you looking for? (Optional)
+            </label>
+            <input
+              type="text"
+              value={lookingFor}
+              onChange={(e) => setLookingFor(e.target.value)}
+              placeholder="e.g. Someone kind, ambitious, funny, and family-oriented"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
             />
           </div>
         </div>

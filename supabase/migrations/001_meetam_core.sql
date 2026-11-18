@@ -300,7 +300,7 @@ BEGIN
   IF v_has_row THEN
     SELECT whatsapp_number, snapchat_handle
     INTO v_whatsapp, v_snapchat
-    FROM profiles WHERE id = p_profile_id;
+    FROM profiles WHERE id = p_profile_id OR user_id = p_profile_id LIMIT 1;
     RETURN jsonb_build_object(
       'ok', true,
       'whatsapp_number', v_whatsapp,
@@ -342,7 +342,7 @@ BEGIN
   -- Return the contact details.
   SELECT whatsapp_number, snapchat_handle
   INTO v_whatsapp, v_snapchat
-  FROM profiles WHERE id = p_profile_id;
+  FROM profiles WHERE id = p_profile_id OR user_id = p_profile_id LIMIT 1;
 
   RETURN jsonb_build_object(
     'ok', true,

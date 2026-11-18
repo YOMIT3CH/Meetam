@@ -60,21 +60,35 @@ export const INTENT_LOOKUP = Object.fromEntries(
 
 export const DEFAULT_INTENT_VALUES = ['serious_relationship', 'marriage'];
 
+export const BODY_TYPES = [
+  { value: 'slim', label: 'Slim' },
+  { value: 'average', label: 'Average' },
+  { value: 'athletic', label: 'Athletic' },
+  { value: 'curvy', label: 'Curvy' },
+  { value: 'plus_size', label: 'Plus Size' },
+  { value: 'muscular', label: 'Muscular' },
+];
+
 export const PUBLIC_PROFILE_FIELDS = [
   'id',
   'display_name',
+  'full_name',
   'age',
   'gender',
   'intent',
   'state',
+  'location_state',
   'area',
+  'location_city',
   'tribe',
   'religion',
   'occupation',
   'height',
   'body_type',
   'about_me',
+  'bio',
   'looking_for',
+  'interests',
   'is_active',
   'is_featured',
   'featured_until',

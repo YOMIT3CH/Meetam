@@ -224,12 +224,49 @@ export default function Profile() {
               </p>
             </div>
 
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Tribe / Ethnicity</p>
+              <p className="text-lg font-bold text-white">
+                {profileData?.tribe || 'Not set'}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Occupation</p>
+              <p className="text-lg font-bold text-white">
+                {profileData?.occupation || 'Not set'}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Body Type</p>
+              <p className="text-lg font-bold text-white capitalize">
+                {profileData?.body_type?.replace('_', ' ') || 'Not set'}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Height</p>
+              <p className="text-lg font-bold text-white">
+                {profileData?.height || 'Not set'}
+              </p>
+            </div>
+
             <div className="sm:col-span-2 lg:col-span-3">
               <p className="text-xs text-slate-500 mb-1">About Me / Bio</p>
               <p className="text-base text-slate-300 leading-relaxed whitespace-pre-wrap">
                 {profileData?.bio || profileData?.about_me || 'No bio provided yet.'}
               </p>
             </div>
+
+            {profileData?.looking_for && (
+              <div className="sm:col-span-2 lg:col-span-3">
+                <p className="text-xs text-slate-500 mb-1">Looking For</p>
+                <p className="text-base text-pink-300 italic leading-relaxed">
+                  "{profileData.looking_for}"
+                </p>
+              </div>
+            )}
 
             <div className="sm:col-span-2 lg:col-span-3">
               <p className="text-xs text-slate-500 mb-1">Interests</p>

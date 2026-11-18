@@ -10,7 +10,6 @@ import {
   INTENTS,
   INTENT_LOOKUP,
   PUBLIC_PROFILE_FIELDS,
-  DEFAULT_INTENT_VALUES,
 } from '../lib/data';
 import {
   LuLockOpen,
@@ -24,6 +23,12 @@ import {
   LuChevronDown,
   LuMapPin,
   LuUser,
+  LuBriefcase,
+  LuSparkles,
+  LuGlobe,
+  LuRuler,
+  LuHeart,
+  LuQuote,
 } from 'react-icons/lu';
 
 const PAGE_SIZE = 20;
@@ -34,9 +39,7 @@ export default function Feed() {
     user,
     loading: authLoading,
     creditsBalance,
-    unlockedContacts,
     cooldownMs,
-    cooldownUntilAt,
     formatCountdown,
     unlockContact,
     isProfileUnlocked,
@@ -121,20 +124,29 @@ export default function Feed() {
     } else if (result?.error === 'INSUFFICIENT_CREDITS') {
       setShowTopUp(true);
     } else if (result?.error === 'COOLDOWN_ACTIVE') {
-      // cooldownMs from context already reflects this
+      // cooldownMs from context reflects this
     }
     setUnlockingId(null);
   };
 
-  // Filter visible profiles by search
+  // Filter visible profiles by search across all intro attributes
   const displayProfiles = search.trim()
     ? profiles.filter((p) => {
         const q = search.toLowerCase();
         return (
           p.display_name?.toLowerCase().includes(q) ||
+          p.full_name?.toLowerCase().includes(q) ||
           p.about_me?.toLowerCase().includes(q) ||
+          p.bio?.toLowerCase().includes(q) ||
           p.tribe?.toLowerCase().includes(q) ||
-          p.occupation?.toLowerCase().includes(q)
+          p.occupation?.toLowerCase().includes(q) ||
+          p.body_type?.toLowerCase().includes(q) ||
+          p.height?.toLowerCase().includes(q) ||
+          p.state?.toLowerCase().includes(q) ||
+          p.location_state?.toLowerCase().includes(q) ||
+          p.area?.toLowerCase().includes(q) ||
+          p.location_city?.toLowerCase().includes(q) ||
+          p.looking_for?.toLowerCase().includes(q)
         );
       })
     : profiles;
@@ -178,7 +190,7 @@ export default function Feed() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, tribe, occupation…"
+              placeholder="Search by name, tribe, occupation, state, body type…"
               className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-slate-900/90 border border-white/10 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
             />
             {search && (
@@ -192,7 +204,7 @@ export default function Feed() {
             )}
           </div>
 
-          {/* Selects Row: 2 columns on mobile, inline on desktop */}
+          {/* Selects Row */}
           <div className="grid grid-cols-2 gap-2.5 w-full sm:w-auto sm:flex sm:gap-3">
             {/* State filter */}
             <div className="relative w-full sm:min-w-[150px]">
@@ -245,7 +257,7 @@ export default function Feed() {
                         : [...prev, intent.value]
                     )
                   }
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border cursor-pointer ${
                     active
                       ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 shadow-sm shadow-emerald-500/10'
                       : 'bg-slate-900/90 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
@@ -269,7 +281,7 @@ export default function Feed() {
               <LuSearch size={28} />
             </div>
             <p className="font-semibold text-white mb-1">No profiles found</p>
-            <p className="text-sm">Try adjusting your filters or check back later.</p>
+            <p className="text-sm">Try adjusting your filters or search keywords.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -293,9 +305,9 @@ export default function Feed() {
           <div className="flex justify-center mt-8">
             <button
               onClick={() => fetchProfiles(false)}
-              className="px-6 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+              className="px-6 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-slate-300 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
             >
-              Load more
+              Load more profiles
             </button>
           </div>
         )}
@@ -310,114 +322,218 @@ export default function Feed() {
   );
 }
 
-// ---- Profile Card ----
+// ---- Comprehensive Dating Intro Profile Card ----
 function ProfileCard({ profile, isUnlocked, unlockData, onUnlock, unlocking, cooldownActive, creditsBalance }) {
-  const intentLabel = INTENT_LOOKUP[profile.intent] || profile.intent || '—';
+  const intentLabel = INTENT_LOOKUP[profile.intent] || profile.intent || null;
   const revealed = isUnlocked || !!unlockData;
 
+  const displayName = profile.display_name || profile.full_name || 'Anonymous';
+  const age = profile.age;
+  const state = profile.state || profile.location_state;
+  const area = profile.area || profile.location_city;
+  const locationText = [area, state].filter(Boolean).join(', ');
+  const bio = profile.about_me || profile.bio;
+  const lookingFor = profile.looking_for;
+
+  // Format body type
+  const bodyTypeLookup = {
+    slim: 'Slim',
+    average: 'Average',
+    athletic: 'Athletic',
+    curvy: 'Curvy',
+    plus_size: 'Plus Size',
+    muscular: 'Muscular',
+  };
+  const bodyTypeDisplay = profile.body_type
+    ? bodyTypeLookup[profile.body_type.toLowerCase()] || profile.body_type
+    : null;
+
+  // Format gender
+  const genderDisplay = profile.gender
+    ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase()
+    : null;
+
+  // Gather core dating intro attributes: State, Gender, Tribe, Occupation, Body Type, Height, Religion
+  const specs = [
+    genderDisplay && { label: 'Gender', value: genderDisplay, icon: LuUser },
+    state && { label: 'State', value: state, icon: LuMapPin },
+    area && { label: 'Area / City', value: area, icon: LuMapPin },
+    profile.tribe && { label: 'Tribe', value: profile.tribe, icon: LuGlobe },
+    profile.occupation && { label: 'Occupation', value: profile.occupation, icon: LuBriefcase },
+    bodyTypeDisplay && { label: 'Body Type', value: bodyTypeDisplay, icon: LuSparkles },
+    profile.height && { label: 'Height', value: profile.height, icon: LuRuler },
+    profile.religion && { label: 'Religion', value: profile.religion, icon: LuHeart },
+  ].filter(Boolean);
+
+  // Initials for avatar badge
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || 'M';
+
   return (
-    <div className={`relative rounded-2xl border bg-white/5 p-5 flex flex-col gap-3 transition-all hover:bg-white/8 ${
-      profile.is_featured ? 'border-emerald-400/40 shadow-lg shadow-emerald-500/10' : 'border-white/10'
-    }`}>
-      {/* Featured badge */}
-      {profile.is_featured && (
-        <span className="absolute top-3 right-3 flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
-          <LuZap size={10} /> Featured
-        </span>
-      )}
-
-      {/* Header */}
-      <div>
-        <p className="font-bold text-white text-base">
-          {profile.display_name || 'Anonymous'}
-        </p>
-        <p className="text-xs text-slate-400 mt-0.5">
-          {[profile.age && `${profile.age} yrs`, profile.gender, profile.state].filter(Boolean).join(' · ')}
-        </p>
-      </div>
-
-      {/* Tags */}
-      <div className="flex flex-wrap gap-1.5">
-        {intentLabel && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300">
-            {intentLabel}
-          </span>
-        )}
-        {profile.tribe && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">
-            {profile.tribe}
-          </span>
-        )}
-        {profile.religion && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">
-            {profile.religion}
-          </span>
-        )}
-        {profile.occupation && (
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">
-            {profile.occupation}
-          </span>
-        )}
-      </div>
-
-      {/* Bio */}
-      {profile.about_me && (
-        <p className="text-sm text-slate-300 line-clamp-3 leading-relaxed">
-          {profile.about_me}
-        </p>
-      )}
-
-      {/* Looking for */}
-      {profile.looking_for && (
-        <p className="text-xs text-slate-500 italic line-clamp-2">
-          Looking for: {profile.looking_for}
-        </p>
-      )}
-
-      {/* Contact reveal / unlock */}
-      <div className="mt-auto pt-3 border-t border-white/5">
-        {revealed ? (
-          <div className="space-y-1.5">
-            {(unlockData?.whatsapp || profile.whatsapp_number) && (
-              <a
-                href={`https://wa.me/${(unlockData?.whatsapp || '').replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-              >
-                <LuMessageCircle size={16} />
-                WhatsApp: {unlockData?.whatsapp || '—'}
-              </a>
-            )}
-            {(unlockData?.snapchat || profile.snapchat_handle) && (
-              <p className="flex items-center gap-2 text-sm text-yellow-400">
-                <LuGhost size={16} />
-                Snapchat: {unlockData?.snapchat || '—'}
+    <div
+      className={`relative rounded-3xl border bg-slate-900/80 p-5 sm:p-5.5 flex flex-col gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${
+        profile.is_featured
+          ? 'border-emerald-400/50 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/20'
+          : 'border-white/10 hover:border-white/20'
+      }`}
+    >
+      {/* Top Bar: Avatar, Name & Age, Badges */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-pink-500/20 border border-white/10 flex items-center justify-center font-bold text-white text-base shadow-inner shrink-0">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-white text-base sm:text-lg tracking-tight truncate">
+              {displayName}
+              {age ? <span className="text-slate-400 font-normal">, {age}</span> : ''}
+            </h3>
+            {locationText && (
+              <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                <LuMapPin size={12} className="text-emerald-400 shrink-0" />
+                <span className="truncate">{locationText}</span>
               </p>
             )}
+          </div>
+        </div>
+
+        {/* Featured Badge */}
+        {profile.is_featured && (
+          <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+            <LuZap size={11} /> Boosted
+          </span>
+        )}
+      </div>
+
+      {/* Relationship Intent Pill (if specified) */}
+      {intentLabel && (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/15 border border-pink-500/30 text-pink-300">
+            <LuHeart size={12} />
+            <span>Looking for {intentLabel}</span>
+          </span>
+        </div>
+      )}
+
+      {/* Personality Intro / Bio ("About Me") */}
+      <div className="bg-slate-950/70 border border-white/5 rounded-2xl p-3.5 space-y-1">
+        <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+          <LuQuote size={12} className="text-emerald-400 shrink-0" />
+          <span>Dating Intro &amp; Bio</span>
+        </div>
+        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+          {bio || 'No bio written yet.'}
+        </p>
+      </div>
+
+      {/* Dating Intro Attributes Matrix: State, Gender, Tribe, Occupation, Body Type, Height, Religion */}
+      {specs.length > 0 && (
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-0.5">
+            Personal Details
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {specs.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={idx}
+                  className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-2 hover:bg-white/[0.06] transition-colors"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Icon size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider leading-none mb-0.5 truncate">
+                      {item.label}
+                    </span>
+                    <span className="text-xs font-semibold text-white block truncate">
+                      {item.value}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* "Looking For" Section (Partner Preference) */}
+      {lookingFor && (
+        <div className="bg-pink-500/10 border border-pink-500/20 rounded-2xl p-3 text-xs space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-pink-300 block">
+            Ideal Partner
+          </span>
+          <p className="text-pink-100/90 italic leading-relaxed text-xs">
+            &ldquo;{lookingFor}&rdquo;
+          </p>
+        </div>
+      )}
+
+      {/* Contact Reveal / Unlock CTA */}
+      <div className="mt-auto pt-3 border-t border-white/10">
+        {revealed ? (
+          <div className="space-y-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25">
+            <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+              <LuLockOpen size={13} />
+              <span>Contact Unlocked</span>
+            </p>
+            <div className="space-y-1.5">
+              {(unlockData?.whatsapp || profile.whatsapp_number) && (
+                <a
+                  href={`https://wa.me/${(unlockData?.whatsapp || profile.whatsapp_number || '').replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-emerald-500/20"
+                >
+                  <LuMessageCircle size={16} className="shrink-0 text-green-400" />
+                  <span>WhatsApp: {unlockData?.whatsapp || profile.whatsapp_number}</span>
+                </a>
+              )}
+              {(unlockData?.snapchat || profile.snapchat_handle) && (
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-yellow-300 bg-white/5 px-3 py-2 rounded-xl border border-yellow-500/20">
+                  <LuGhost size={16} className="shrink-0 text-yellow-400" />
+                  <span>Snapchat: {unlockData?.snapchat || profile.snapchat_handle}</span>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <button
             onClick={onUnlock}
             disabled={unlocking || cooldownActive || creditsBalance < 1}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               unlocking
                 ? 'bg-white/5 border border-white/10 text-slate-500 cursor-wait'
                 : cooldownActive
                 ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400 cursor-not-allowed'
                 : creditsBalance < 1
-                ? 'bg-white/5 border border-white/10 text-slate-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-emerald-500 to-pink-500 text-white hover:shadow-lg hover:shadow-emerald-500/20'
+                ? 'bg-white/5 border border-white/10 text-slate-400 hover:border-emerald-400/40 hover:text-white'
+                : 'bg-gradient-to-r from-emerald-500 to-pink-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-[0.99]'
             }`}
           >
             {unlocking ? (
               <span className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full" />
             ) : cooldownActive ? (
-              <><LuLock size={14} /> Cooldown active</>
+              <>
+                <LuLock size={15} />
+                <span>Cooldown active</span>
+              </>
             ) : creditsBalance < 1 ? (
-              <><LuLock size={14} /> No credits</>
+              <>
+                <LuLockOpen size={15} />
+                <span>Unlock (Get Credits)</span>
+              </>
             ) : (
-              <><LuLockOpen size={14} /> Unlock — 1 credit</>
+              <>
+                <LuLockOpen size={15} />
+                <span>Unlock Contact &mdash; 1 Credit</span>
+              </>
             )}
           </button>
         )}
