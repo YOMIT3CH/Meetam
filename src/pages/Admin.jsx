@@ -167,6 +167,7 @@ export default function Admin() {
         supabase.from('announcements').select('*').limit(1).maybeSingle(),
       ]);
 
+      let foundAnnouncement = false;
       if (Array.isArray(settingsData)) {
         settingsData.forEach((s) => {
           if (s.key === 'bank_details' && s.value) {
@@ -175,12 +176,33 @@ export default function Admin() {
             if (s.value.accountNumber) setSettingsAccountNumber(s.value.accountNumber);
             if (s.value.supportWhatsapp) setSettingsWhatsApp(s.value.supportWhatsapp);
           }
+          if (s.key === 'site_announcement' && s.value) {
+            if (typeof s.value.text === 'string') {
+              setAnnouncementText(s.value.text);
+              setAnnouncementActive(Boolean(s.value.is_active));
+              foundAnnouncement = true;
+            }
+          }
         });
       }
 
-      if (annData) {
+      if (!foundAnnouncement && annData) {
         setAnnouncementText(annData.body || annData.title || annData.message || '');
         setAnnouncementActive(Boolean(annData.is_active));
+        foundAnnouncement = true;
+      }
+
+      if (!foundAnnouncement) {
+        try {
+          const cachedAnn = localStorage.getItem('meetam_site_announcement');
+          if (cachedAnn) {
+            const parsed = JSON.parse(cachedAnn);
+            if (parsed.text) {
+              setAnnouncementText(parsed.text);
+              setAnnouncementActive(Boolean(parsed.is_active));
+            }
+          }
+        } catch (e) {}
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -405,22 +427,54 @@ export default function Admin() {
             updated_at: new Date().toISOString(),
           });
 
-        // 2. Update announcement banner (columns: id, title, body, kind, is_active)
+        // 2. Update site_announcement in app_settings (bulletproof KV store)
         await supabase
-          .from('announcements')
+          .from('app_settings')
           .upsert({
-            id: '00000000-0000-0000-0000-000000000001',
-            title: 'Announcement',
-            body: announcementText.trim(),
-            kind: 'info',
-            is_active: announcementActive,
+            key: 'site_announcement',
+            value: {
+              text: announcementText.trim(),
+              is_active: announcementActive,
+              updated_at: new Date().toISOString(),
+            },
+            description: 'Active broadcast announcement banner',
+            updated_at: new Date().toISOString(),
           });
+
+        // 3. Update announcement banner table (columns: id, title, body, kind, is_active)
+        try {
+          await supabase
+            .from('announcements')
+            .upsert({
+              id: '00000000-0000-0000-0000-000000000001',
+              title: 'Announcement',
+              body: announcementText.trim(),
+              kind: 'info',
+              is_active: announcementActive,
+            });
+        } catch (e) {
+          // ignore
+        }
       }
 
       // Also persist to localStorage as instant offline fallback
       try {
         localStorage.setItem('meetam_bank_details', JSON.stringify(bankDetailsPayload));
         window.dispatchEvent(new Event('meetam_bank_details_updated'));
+
+        localStorage.setItem(
+          'meetam_site_announcement',
+          JSON.stringify({
+            text: announcementText.trim(),
+            body: announcementText.trim(),
+            is_active: announcementActive,
+            timestamp: Date.now(),
+          })
+        );
+        // Clear old dismissal so daters immediately see this newly saved announcement
+        localStorage.removeItem('meetam_dismissed_messages');
+        localStorage.removeItem('meetam_dismissed_announcements');
+        window.dispatchEvent(new Event('meetam_announcement_updated'));
       } catch (err) {
         // ignore
       }

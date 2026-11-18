@@ -173,20 +173,40 @@ BEGIN
         updated_at = NOW();
   END IF;
 
-  -- 2. Upsert announcement in announcements table
+  -- 2. Upsert announcement in app_settings as site_announcement (reliable KV store)
   IF p_announcement_text IS NOT NULL THEN
-    INSERT INTO announcements (id, title, body, kind, is_active, created_at)
+    INSERT INTO app_settings (key, value, description, updated_at)
     VALUES (
-      '00000000-0000-0000-0000-000000000001',
-      'Announcement',
-      p_announcement_text,
-      'info',
-      COALESCE(p_announcement_active, true),
+      'site_announcement',
+      jsonb_build_object(
+        'text', p_announcement_text,
+        'is_active', COALESCE(p_announcement_active, true),
+        'updated_at', NOW()::text
+      ),
+      'Active broadcast announcement banner',
       NOW()
     )
-    ON CONFLICT (id) DO UPDATE
-    SET body = EXCLUDED.body,
-        is_active = EXCLUDED.is_active;
+    ON CONFLICT (key) DO UPDATE
+    SET value = EXCLUDED.value,
+        updated_at = NOW();
+
+    -- 3. Also update or insert in announcements table
+    IF EXISTS (SELECT 1 FROM announcements LIMIT 1) THEN
+      UPDATE announcements
+      SET body = p_announcement_text,
+          title = 'Announcement',
+          is_active = COALESCE(p_announcement_active, true);
+    ELSE
+      INSERT INTO announcements (id, title, body, kind, is_active, created_at)
+      VALUES (
+        '00000000-0000-0000-0000-000000000001',
+        'Announcement',
+        p_announcement_text,
+        'info',
+        COALESCE(p_announcement_active, true),
+        NOW()
+      );
+    END IF;
   END IF;
 
   RETURN jsonb_build_object('ok', true);
