@@ -420,6 +420,7 @@ export default function Admin() {
       // Also persist to localStorage as instant offline fallback
       try {
         localStorage.setItem('meetam_bank_details', JSON.stringify(bankDetailsPayload));
+        window.dispatchEvent(new Event('meetam_bank_details_updated'));
       } catch (err) {
         // ignore
       }

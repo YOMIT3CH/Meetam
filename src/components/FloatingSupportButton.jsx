@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { LuMessageCircle } from 'react-icons/lu';
+import { useMeetAm } from '../context/MeetAmContext';
 
-const SUPPORT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || 'https://wa.me/2348012345678';
+const DEFAULT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || 'https://wa.me/2348012345678';
 
 export default function FloatingSupportButton() {
   const [open, setOpen] = useState(false);
+  const { bankDetails } = useMeetAm();
+  const supportUrl = bankDetails?.supportWhatsapp || DEFAULT_WHATSAPP;
 
   return (
     <>
@@ -40,7 +43,7 @@ export default function FloatingSupportButton() {
             anytime for account, payment, or general questions.
           </p>
           <a
-            href={SUPPORT_WHATSAPP}
+            href={supportUrl}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-2 w-full rounded-xl bg-green-500 hover:bg-green-400 text-white font-semibold py-3 transition-colors"

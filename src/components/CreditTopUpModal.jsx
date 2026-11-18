@@ -20,8 +20,66 @@ import {
 } from 'react-icons/lu';
 
 export default function CreditTopUpModal({ open, onClose, onCompleted }) {
-  const { user } = useMeetAm();
+  const { user, bankDetails: ctxBankDetails } = useMeetAm();
   const fileInputRef = useRef(null);
+
+  // Dynamic live bank details from context, cache, or database
+  const [bankInfo, setBankInfo] = useState(() => {
+    try {
+      const cached = localStorage.getItem('meetam_bank_details');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      bankName: import.meta.env.VITE_BANK_NAME || BANK_DETAILS.bankName,
+      accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME || BANK_DETAILS.accountName,
+      accountNumber: import.meta.env.VITE_BANK_ACCOUNT_NUMBER || BANK_DETAILS.accountNumber,
+      supportWhatsapp: import.meta.env.VITE_SUPPORT_WHATSAPP || SUPPORT_WHATSAPP,
+    };
+  });
+
+  // Sync with context updates
+  useEffect(() => {
+    if (ctxBankDetails) {
+      setBankInfo(ctxBankDetails);
+    }
+  }, [ctxBankDetails]);
+
+  // When modal is opened, fetch fresh bank details from app_settings
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'bank_details')
+          .maybeSingle();
+
+        if (!cancelled && data?.value) {
+          setBankInfo((prev) => {
+            const next = {
+              bankName: data.value.bankName || prev.bankName,
+              accountName: data.value.accountName || prev.accountName,
+              accountNumber: data.value.accountNumber || prev.accountNumber,
+              supportWhatsapp: data.value.supportWhatsapp || prev.supportWhatsapp,
+            };
+            try {
+              localStorage.setItem('meetam_bank_details', JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+        }
+      } catch (e) {
+        // use cached/fallback
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const [selectedBundle, setSelectedBundle] = useState(PAYSTACK_BUNDLES[0]);
   const [activeStep, setActiveStep] = useState(1); // 1: Package & Bank Details, 2: Receipt & Sender Info, 3: Success
@@ -63,10 +121,10 @@ export default function CreditTopUpModal({ open, onClose, onCompleted }) {
 
   if (!open) return null;
 
-  const bankName = import.meta.env.VITE_BANK_NAME || BANK_DETAILS.bankName;
-  const accountName = import.meta.env.VITE_BANK_ACCOUNT_NAME || BANK_DETAILS.accountName;
-  const accountNumber = import.meta.env.VITE_BANK_ACCOUNT_NUMBER || BANK_DETAILS.accountNumber;
-  const supportPhone = import.meta.env.VITE_SUPPORT_WHATSAPP || SUPPORT_WHATSAPP;
+  const bankName = bankInfo.bankName || import.meta.env.VITE_BANK_NAME || BANK_DETAILS.bankName;
+  const accountName = bankInfo.accountName || import.meta.env.VITE_BANK_ACCOUNT_NAME || BANK_DETAILS.accountName;
+  const accountNumber = bankInfo.accountNumber || import.meta.env.VITE_BANK_ACCOUNT_NUMBER || BANK_DETAILS.accountNumber;
+  const supportPhone = bankInfo.supportWhatsapp || import.meta.env.VITE_SUPPORT_WHATSAPP || SUPPORT_WHATSAPP;
 
   const handleCopyAccount = () => {
     if (navigator.clipboard) {

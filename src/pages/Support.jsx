@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { LuSmartphone, LuMail, LuShield, LuUsers, LuClock, LuArrowLeft } from 'react-icons/lu';
 import { SUPPORT_WHATSAPP } from '../lib/data';
+import { useMeetAm } from '../context/MeetAmContext';
 
 export default function Support() {
-  const whatsappUrl = import.meta.env.VITE_SUPPORT_WHATSAPP || SUPPORT_WHATSAPP;
+  const { bankDetails } = useMeetAm();
+  const whatsappUrl = bankDetails?.supportWhatsapp || import.meta.env.VITE_SUPPORT_WHATSAPP || SUPPORT_WHATSAPP;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">

@@ -9,7 +9,9 @@ import {
 import supabase from '../lib/supabase';
 import {
   DEFAULT_INTENT_VALUES,
+  SUPPORT_WHATSAPP,
 } from '../lib/data';
+import { BANK_DETAILS } from '../lib/constants';
 import { formatCountdown } from '../lib/format';
 
 const MeetAmContext = createContext(null);
@@ -25,6 +27,19 @@ export function MeetAmProvider({ children }) {
   const [enabledIntentValues, setEnabledIntentValues] = useState(
     DEFAULT_INTENT_VALUES
   );
+
+  const [bankDetails, setBankDetails] = useState(() => {
+    try {
+      const cached = localStorage.getItem('meetam_bank_details');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      bankName: import.meta.env.VITE_BANK_NAME || BANK_DETAILS.bankName,
+      accountName: import.meta.env.VITE_BANK_ACCOUNT_NAME || BANK_DETAILS.accountName,
+      accountNumber: import.meta.env.VITE_BANK_ACCOUNT_NUMBER || BANK_DETAILS.accountNumber,
+      supportWhatsapp: import.meta.env.VITE_SUPPORT_WHATSAPP || SUPPORT_WHATSAPP,
+    };
+  });
 
   const [hasOnboarded, setHasOnboarded] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -140,6 +155,54 @@ export function MeetAmProvider({ children }) {
       // Ignored
     }
   }, [user]);
+
+  // ---- Dynamic Bank Details from app_settings ----
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchBankDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('key, value')
+          .eq('key', 'bank_details')
+          .maybeSingle();
+
+        if (!cancelled && !error && data?.value) {
+          const val = data.value;
+          setBankDetails((prev) => {
+            const next = {
+              bankName: val.bankName || prev.bankName,
+              accountName: val.accountName || prev.accountName,
+              accountNumber: val.accountNumber || prev.accountNumber,
+              supportWhatsapp: val.supportWhatsapp || prev.supportWhatsapp,
+            };
+            try {
+              localStorage.setItem('meetam_bank_details', JSON.stringify(next));
+            } catch {}
+            return next;
+          });
+        }
+      } catch (_err) {
+        // Fallback to cache/defaults
+      }
+    };
+
+    fetchBankDetails();
+
+    const handleCustomEvent = () => {
+      try {
+        const cached = localStorage.getItem('meetam_bank_details');
+        if (cached) setBankDetails(JSON.parse(cached));
+      } catch {}
+    };
+
+    window.addEventListener('meetam_bank_details_updated', handleCustomEvent);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('meetam_bank_details_updated', handleCustomEvent);
+    };
+  }, []);
 
   // ---- Feature flags from app_settings ----
   useEffect(() => {
@@ -282,6 +345,7 @@ export function MeetAmProvider({ children }) {
       loading,
       creditsBalance,
       unlockedContacts: sortedUnlocked,
+      bankDetails,
       enableMediaUploads,
       enabledIntentValues,
       hasOnboarded,
@@ -311,6 +375,7 @@ export function MeetAmProvider({ children }) {
     loading,
     creditsBalance,
     unlockedContacts,
+    bankDetails,
     enableMediaUploads,
     enabledIntentValues,
     hasOnboarded,
