@@ -19,6 +19,7 @@ import {
   LuMessageCircle,
   LuGhost,
   LuClock,
+  LuCamera,
 } from 'react-icons/lu';
 
 export default function Dashboard() {
@@ -44,6 +45,8 @@ export default function Dashboard() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [editPhotoFile, setEditPhotoFile] = useState(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -66,24 +69,43 @@ export default function Dashboard() {
       .catch(() => setProfileLoading(false));
   }, [user]);
 
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setSaveError('Photo size must be less than 5MB');
+      return;
+    }
+    setSaveError('');
+    setEditPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditPhotoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const openEdit = () => {
     setEditForm({
-      display_name: profile?.display_name || '',
+      display_name: profile?.display_name || profile?.full_name || '',
       age: profile?.age || '',
       gender: profile?.gender || '',
       intent: profile?.intent || '',
-      state: profile?.state || '',
-      area: profile?.area || '',
+      state: profile?.state || profile?.location_state || '',
+      area: profile?.area || profile?.location_city || '',
       tribe: profile?.tribe || '',
       religion: profile?.religion || '',
       occupation: profile?.occupation || '',
       height: profile?.height || '',
       body_type: profile?.body_type || '',
-      about_me: profile?.about_me || '',
+      about_me: profile?.about_me || profile?.bio || '',
       looking_for: profile?.looking_for || '',
       whatsapp_number: profile?.whatsapp_number || '',
       snapchat_handle: profile?.snapchat_handle || '',
+      photo_url: profile?.photo_url || '',
     });
+    setEditPhotoFile(null);
+    setEditPhotoPreview('');
     setSaveError('');
     setSaveSuccess(false);
     setShowEditModal(true);
@@ -94,8 +116,36 @@ export default function Dashboard() {
     setSaveError('');
     setSaveSuccess(false);
 
+    let finalPhotoUrl = editForm.photo_url || profile?.photo_url || '';
+    if (editPhotoFile) {
+      try {
+        const fileExt = editPhotoFile.name.split('.').pop();
+        const filePath = `avatars/${user.id}_${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, editPhotoFile, { upsert: true });
+
+        if (!uploadErr && uploadData) {
+          const { data: pubData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          if (pubData?.publicUrl) {
+            finalPhotoUrl = pubData.publicUrl;
+          }
+        }
+      } catch {
+        // Fall back to preview DataURL
+        if (!finalPhotoUrl && editPhotoPreview) {
+          finalPhotoUrl = editPhotoPreview;
+        }
+      }
+    } else if (editPhotoPreview) {
+      finalPhotoUrl = editPhotoPreview;
+    }
+
     const payload = {
       ...editForm,
+      photo_url: finalPhotoUrl,
       age: editForm.age ? parseInt(editForm.age, 10) : null,
       updated_at: new Date().toISOString(),
     };
@@ -225,13 +275,28 @@ export default function Dashboard() {
         {/* My Profile card */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-pink-500 flex items-center justify-center shrink-0">
-                <LuUser size={20} className="text-white" />
+            <div className="flex items-center gap-3.5">
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-900 border border-white/15 overflow-hidden flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/10">
+                {profile?.photo_url ? (
+                  <img
+                    src={profile.photo_url}
+                    alt={profile.display_name || 'My Profile'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-pink-500 flex items-center justify-center font-bold text-white text-lg sm:text-xl">
+                    {(profile?.display_name || profile?.full_name || user?.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
               <div>
-                <h2 className="font-bold text-white text-base sm:text-lg">My Profile</h2>
-                <p className="text-xs text-slate-400">Your public dating intro</p>
+                <h2 className="font-bold text-white text-base sm:text-lg">
+                  {profile?.display_name || profile?.full_name || 'My Profile'}
+                  {profile?.age ? <span className="text-slate-400 font-normal">, {profile.age}</span> : ''}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {[profile?.gender, profile?.state, profile?.occupation].filter(Boolean).join(' • ') || 'Your public dating intro'}
+                </p>
               </div>
             </div>
             <button
@@ -290,8 +355,8 @@ export default function Dashboard() {
               <div className="col-span-2 sm:col-span-3">
                 <Field label="Looking For" value={profile.looking_for} multiline />
               </div>
-              <Field label="WhatsApp" value={profile.whatsapp_number ? '•••••••••• (hidden)' : null} />
-              <Field label="Snapchat" value={profile.snapchat_handle ? '•••••••••• (hidden)' : null} />
+              <Field label="WhatsApp" value={profile.whatsapp_number ? `${profile.whatsapp_number} (Hidden until unlock)` : 'Not set (click edit to add)'} />
+              <Field label="Snapchat" value={profile.snapchat_handle ? `${profile.snapchat_handle} (Hidden until unlock)` : 'Not set (click edit to add)'} />
             </div>
           )}
         </div>
@@ -396,6 +461,61 @@ export default function Dashboard() {
             {/* Scrollable Form Body */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 overscroll-contain">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+
+              {/* Profile Photo Upload Field */}
+              <div className="col-span-1 sm:col-span-2 p-3.5 sm:p-4 rounded-2xl bg-slate-950/70 border border-white/10 flex items-center gap-4">
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-900 border border-white/15 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+                  {editPhotoPreview || editForm.photo_url ? (
+                    <img
+                      src={editPhotoPreview || editForm.photo_url}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-emerald-500/20 to-pink-500/20 flex items-center justify-center font-bold text-white text-xl">
+                      {(editForm.display_name || user?.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 space-y-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-200 uppercase tracking-wider mb-0.5">
+                      Profile Picture
+                    </label>
+                    <p className="text-[11px] text-slate-400">JPG, PNG, or WebP up to 5MB</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="file"
+                      id="dashboard-photo-upload"
+                      accept="image/*"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="dashboard-photo-upload"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      <LuCamera size={13} />
+                      <span>{editPhotoPreview || editForm.photo_url ? 'Change Photo' : 'Upload Photo'}</span>
+                    </label>
+                    {(editPhotoPreview || editForm.photo_url) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPhotoFile(null);
+                          setEditPhotoPreview('');
+                          setEditForm((f) => ({ ...f, photo_url: '' }));
+                        }}
+                        className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer px-2 py-1"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <FormField label="Display Name *" required>
                 <input
                   type="text"

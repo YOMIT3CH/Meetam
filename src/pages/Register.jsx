@@ -19,6 +19,9 @@ import {
   LuSparkles,
   LuGlobe,
   LuHeart,
+  LuMessageCircle,
+  LuGhost,
+  LuShieldCheck,
 } from 'react-icons/lu';
 
 export default function Register() {
@@ -29,6 +32,10 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // State Declarations - Contact Handles (Revealed upon profile unlock)
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [snapchatHandle, setSnapchatHandle] = useState('');
 
   // State Declarations - Dating Intro & Specs
   const [dob, setDob] = useState('');
@@ -73,6 +80,11 @@ export default function Register() {
       return;
     }
 
+    if (!whatsappNumber.trim()) {
+      setError('WhatsApp number is required so daters can connect when profile is unlocked');
+      return;
+    }
+
     // Age validation (18+)
     const birthDate = new Date(dob);
     const today = new Date();
@@ -108,6 +120,8 @@ export default function Register() {
             body_type: bodyType,
             height: height.trim(),
             looking_for: lookingFor.trim(),
+            whatsapp_number: whatsappNumber.trim(),
+            snapchat_handle: snapchatHandle.trim(),
           },
         },
       });
@@ -115,7 +129,7 @@ export default function Register() {
       if (authError) throw authError;
 
       if (data?.user) {
-        // Insert/upsert profile row with all dating intro attributes
+        // 2. Insert/upsert profile row with handles and all dating intro attributes
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -138,6 +152,8 @@ export default function Register() {
             bio: bio.trim(),
             about_me: bio.trim(),
             looking_for: lookingFor.trim(),
+            whatsapp_number: whatsappNumber.trim(),
+            snapchat_handle: snapchatHandle.trim(),
             is_active: true,
           });
 
@@ -456,6 +472,62 @@ export default function Register() {
               placeholder="e.g. Someone kind, ambitious, funny, and family-oriented"
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
             />
+          </div>
+        </div>
+
+        {/* Section 3: Contact Handles (WhatsApp & Snapchat) */}
+        <div className="pt-3 border-t border-white/10 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+              Contact Handles
+            </p>
+            <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+              <LuShieldCheck size={13} className="text-emerald-400" />
+              <span>Private until unlocked</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* WhatsApp Number */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                WhatsApp Number <span className="text-emerald-400">*</span>
+              </label>
+              <div className="relative">
+                <LuMessageCircle size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                <input
+                  type="tel"
+                  required
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value)}
+                  placeholder="e.g. +2348012345678"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Your direct number. Only revealed to users who spend a credit to unlock your intro.
+              </p>
+            </div>
+
+            {/* Snapchat Handle */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                Snapchat Handle (Optional)
+              </label>
+              <div className="relative">
+                <LuGhost size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-yellow-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={snapchatHandle}
+                  onChange={(e) => setSnapchatHandle(e.target.value)}
+                  placeholder="e.g. @yourhandle"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/60 border border-white/10 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Your Snapchat username for daters who prefer chatting via Snap.
+              </p>
+            </div>
           </div>
         </div>
 
