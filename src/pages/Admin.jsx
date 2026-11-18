@@ -128,18 +128,27 @@ export default function Admin() {
   const fetchUsers = useCallback(async () => {
     setLoadingProfiles(true);
     try {
-      const [{ data: profs }, { data: wals }] = await Promise.all([
+      // Fetch profiles and use admin RPC for wallets (bypasses RLS)
+      const [{ data: profs }, { data: wals, error: walsErr }] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('wallets').select('*'),
+        supabase.rpc('admin_get_wallets'),
       ]);
 
       if (Array.isArray(profs)) setProfiles(profs);
 
       const wMap = {};
-      if (Array.isArray(wals)) {
+      if (!walsErr && Array.isArray(wals)) {
         wals.forEach((w) => {
           wMap[w.user_id] = w.credits_balance;
         });
+      } else {
+        // Fallback: direct query (may only return own wallet if RLS restricts)
+        const { data: directWals } = await supabase.from('wallets').select('*');
+        if (Array.isArray(directWals)) {
+          directWals.forEach((w) => {
+            wMap[w.user_id] = w.credits_balance;
+          });
+        }
       }
       setWalletsMap(wMap);
     } catch (err) {
@@ -199,6 +208,9 @@ export default function Admin() {
       });
 
       if (!rpcErr && rpcRes?.ok) {
+        // Optimistically update wallet display using the returned new_balance
+        const newBal = rpcRes.new_balance ?? (walletsMap[tx.user_id] || 0) + (tx.credits || 0);
+        setWalletsMap((prev) => ({ ...prev, [tx.user_id]: newBal }));
         showNotification(`Payment approved! Added ${tx.credits} credits to user wallet.`);
       } else {
         // Fallback: direct table updates
@@ -215,20 +227,24 @@ export default function Admin() {
           .maybeSingle();
 
         const currentCredits = curWallet?.credits_balance || 0;
+        const newBalance = currentCredits + (tx.credits || 1);
         await supabase
           .from('wallets')
           .upsert({
             user_id: tx.user_id,
-            credits_balance: currentCredits + (tx.credits || 1),
+            credits_balance: newBalance,
             updated_at: new Date().toISOString(),
           });
 
+        // Optimistically update wallet display
+        setWalletsMap((prev) => ({ ...prev, [tx.user_id]: newBalance }));
         showNotification(`Payment approved & ${tx.credits} credits granted!`);
       }
 
       setSelectedReceipt(null);
       await fetchTransactions();
-      await fetchUsers();
+      // Background refresh to sync all wallets
+      fetchUsers();
     } catch (err) {
       showNotification(err.message || 'Failed to approve payment', 'error');
     } finally {
@@ -321,27 +337,37 @@ export default function Admin() {
   const handleAdjustCredits = async () => {
     if (!creditAdjustModal) return;
     try {
-      const { user_id } = creditAdjustModal;
-      const { error: rpcErr } = await supabase.rpc('admin_adjust_user_credits', {
+      const { user_id, current_credits } = creditAdjustModal;
+      const newBalance = Math.max(0, (current_credits || 0) + creditDelta);
+
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc('admin_adjust_user_credits', {
         p_user_id: user_id,
         p_amount: creditDelta,
       });
 
       if (rpcErr) {
-        // Fallback
-        const current = walletsMap[user_id] || 0;
+        // Fallback direct upsert
         await supabase
           .from('wallets')
           .upsert({
             user_id,
-            credits_balance: Math.max(0, current + creditDelta),
+            credits_balance: newBalance,
             updated_at: new Date().toISOString(),
           });
       }
 
-      showNotification(`Updated credits by ${creditDelta > 0 ? `+${creditDelta}` : creditDelta}!`);
+      // Use balance returned by RPC if available, otherwise computed locally
+      const confirmedBalance = rpcRes?.new_balance ?? newBalance;
+
+      // Optimistically update walletsMap so UI reflects immediately
+      setWalletsMap((prev) => ({ ...prev, [user_id]: confirmedBalance }));
+
+      showNotification(`Credits updated! New balance: ${confirmedBalance} credits.`);
       setCreditAdjustModal(null);
-      await fetchUsers();
+      setCreditDelta(5);
+
+      // Background refresh to ensure consistency
+      fetchUsers();
     } catch (err) {
       showNotification(err.message || 'Failed to adjust credits', 'error');
     }
