@@ -84,9 +84,9 @@ export default function AuthLayout({ children, activeTab = 'login' }) {
                   <LuSparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-white">24h Cooldown Pace</h3>
+                  <h3 className="text-sm font-semibold text-white">Instant Direct Connect</h3>
                   <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                    One unlock every 24 hours stops serial swiping and keeps conversations meaningful.
+                    Once unlocked, connect immediately via WhatsApp chat or Snapchat without barriers.
                   </p>
                 </div>
               </div>

@@ -281,58 +281,69 @@ export default function Profile() {
       </div>
 
       {showUpdateModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg sm:text-xl font-bold text-white">Edit Profile</h2>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="fixed inset-0 cursor-pointer"
+            onClick={() => setShowUpdateModal(false)}
+          />
+          <div className="relative bg-slate-900 border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-2xl max-w-md w-full max-h-[92dvh] sm:max-h-[88vh] flex flex-col shadow-2xl z-10 overflow-hidden text-white">
+            {/* Mobile drag handle */}
+            <div className="w-full pt-2.5 pb-1 flex justify-center sm:hidden shrink-0 bg-slate-900">
+              <div className="w-10 h-1 bg-white/20 rounded-full" />
+            </div>
+
+            {/* Sticky Header */}
+            <div className="px-4 sm:px-6 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/95 backdrop-blur-md">
+              <h2 className="text-base sm:text-lg font-bold text-white">Edit Profile</h2>
               <button
-                className="text-slate-400 hover:text-white text-xl"
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer text-lg"
                 onClick={() => setShowUpdateModal(false)}
               >
                 ×
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3.5 overscroll-contain">
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Full Name</label>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Full Name</label>
                 <input
                   type="text"
                   value={editFullName}
                   onChange={(e) => setEditFullName(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-11 px-3.5 rounded-xl bg-slate-950/60 border border-white/10 text-white text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Your full name"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Bio / About Me</label>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Bio / About Me</label>
                 <textarea
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={3}
-                  className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                  className="w-full p-3 rounded-xl bg-slate-950/60 border border-white/10 text-white text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
                   placeholder="Introduce yourself..."
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Interests (comma separated)</label>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Interests (comma separated)</label>
                 <input
                   type="text"
                   value={editInterests}
                   onChange={(e) => setEditInterests(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-11 px-3.5 rounded-xl bg-slate-950/60 border border-white/10 text-white text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="e.g. Tech, Travel, Music"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 mb-1 block">Orientation</label>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Orientation</label>
                 <select
                   value={editOrientation}
                   onChange={(e) => setEditOrientation(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl bg-slate-900 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full h-11 px-3 rounded-xl bg-slate-950/60 border border-white/10 text-white text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                 >
                   <option value="">Select</option>
                   <option value="straight">Straight</option>
@@ -343,16 +354,17 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            {/* Sticky Footer */}
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
               <button
-                className="flex-1 bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-all"
+                className="flex-1 bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium hover:bg-white/10 transition-all cursor-pointer"
                 onClick={() => setShowUpdateModal(false)}
               >
                 Cancel
               </button>
               <button
                 disabled={saving}
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-pink-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all disabled:opacity-50"
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-pink-500 text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center"
                 onClick={handleSaveProfile}
               >
                 {saving ? 'Saving...' : 'Save Changes'}

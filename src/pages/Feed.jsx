@@ -39,8 +39,6 @@ export default function Feed() {
     user,
     loading: authLoading,
     creditsBalance,
-    cooldownMs,
-    formatCountdown,
     unlockContact,
     isProfileUnlocked,
     getUnlockedContact,
@@ -48,7 +46,6 @@ export default function Feed() {
     refreshUnlockedContacts,
     showTopUp,
     setShowTopUp,
-    enabledIntentValues,
   } = useMeetAm();
 
   // Redirect unauthenticated users
@@ -59,7 +56,7 @@ export default function Feed() {
   // ---- Filters ----
   const [filterState, setFilterState] = useState('');
   const [filterGender, setFilterGender] = useState('');
-  const [filterIntents, setFilterIntents] = useState(enabledIntentValues);
+  const [filterIntents, setFilterIntents] = useState([]);
   const [search, setSearch] = useState('');
 
   // ---- Profiles ----
@@ -124,8 +121,6 @@ export default function Feed() {
       refreshUnlockedContacts();
     } else if (result?.error === 'INSUFFICIENT_CREDITS') {
       setShowTopUp(true);
-    } else if (result?.error === 'COOLDOWN_ACTIVE') {
-      // Cooldown timer is live ticking in context
     }
     setUnlockingId(null);
   };
@@ -172,22 +167,7 @@ export default function Feed() {
         onCompleted={() => { setShowTopUp(false); refreshCredits(); }}
       />
 
-      {/* Live Ticking Cooldown Banner (Continuous Countdown, No Page Refresh Required) */}
-      {cooldownMs > 0 && (
-        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 flex items-center justify-center gap-2 text-xs sm:text-sm text-amber-200">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-          </span>
-          <LuClock size={15} className="text-amber-400 shrink-0" />
-          <span>Next contact unlock available in:</span>
-          <span className="font-mono font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded-md">
-            {formatCountdown(cooldownMs)}
-          </span>
-        </div>
-      )}
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-6">
           {/* Search */}
@@ -251,7 +231,19 @@ export default function Feed() {
           </div>
 
           {/* Intent pills */}
-          <div className="flex gap-2 flex-wrap items-center w-full">
+          <div className="flex gap-1.5 sm:gap-2 flex-wrap items-center w-full">
+            {/* Default "All Intents" pill */}
+            <button
+              onClick={() => setFilterIntents([])}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
+                filterIntents.length === 0
+                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 shadow-sm shadow-emerald-500/10 ring-1 ring-emerald-400/30'
+                  : 'bg-slate-900/90 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
+              }`}
+            >
+              All Intents
+            </button>
+
             {INTENTS.map((intent) => {
               const active = filterIntents.includes(intent.value);
               return (
@@ -301,9 +293,6 @@ export default function Feed() {
                 getUnlockedContact={getUnlockedContact}
                 onUnlock={() => handleUnlock(profile.id)}
                 unlocking={unlockingId === profile.id}
-                cooldownActive={cooldownMs > 0}
-                cooldownMs={cooldownMs}
-                formatCountdown={formatCountdown}
                 creditsBalance={creditsBalance}
               />
             ))}
@@ -340,9 +329,6 @@ function ProfileCard({
   getUnlockedContact,
   onUnlock,
   unlocking,
-  cooldownActive,
-  cooldownMs,
-  formatCountdown,
   creditsBalance,
 }) {
   const intentLabel = INTENT_LOOKUP[profile.intent] || profile.intent || null;
@@ -402,19 +388,19 @@ function ProfileCard({
 
   return (
     <div
-      className={`relative rounded-3xl border bg-slate-900/80 p-5 sm:p-5.5 flex flex-col gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${
+      className={`relative rounded-3xl border bg-slate-900/80 p-4 sm:p-5.5 flex flex-col gap-3.5 sm:gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${
         profile.is_featured
           ? 'border-emerald-400/50 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/20'
           : 'border-white/10 hover:border-white/20'
       }`}
     >
       {/* Top Bar: Avatar, Name & Age, Badges */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-pink-500/20 border border-white/10 flex items-center justify-center font-bold text-white text-base shadow-inner shrink-0">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-pink-500/20 border border-white/10 flex items-center justify-center font-bold text-white text-sm sm:text-base shadow-inner shrink-0">
             {initials}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h3 className="font-bold text-white text-base sm:text-lg tracking-tight truncate">
               {displayName}
               {age ? <span className="text-slate-400 font-normal">, {age}</span> : ''}
@@ -430,8 +416,8 @@ function ProfileCard({
 
         {/* Featured Badge */}
         {profile.is_featured && (
-          <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
-            <LuZap size={11} /> Boosted
+          <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full uppercase tracking-wider shadow-sm">
+            <LuZap size={10} /> Boosted
           </span>
         )}
       </div>
@@ -439,7 +425,7 @@ function ProfileCard({
       {/* Relationship Intent Pill (if specified) */}
       {intentLabel && (
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/15 border border-pink-500/30 text-pink-300">
+          <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/15 border border-pink-500/30 text-pink-300">
             <LuHeart size={12} />
             <span>Looking for {intentLabel}</span>
           </span>
@@ -447,38 +433,38 @@ function ProfileCard({
       )}
 
       {/* Personality Intro / Bio ("About Me") */}
-      <div className="bg-slate-950/70 border border-white/5 rounded-2xl p-3.5 space-y-1">
+      <div className="bg-slate-950/70 border border-white/5 rounded-2xl p-3 sm:p-3.5 space-y-1">
         <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
           <LuQuote size={12} className="text-emerald-400 shrink-0" />
           <span>Dating Intro &amp; Bio</span>
         </div>
-        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-line break-words">
           {bio || 'No bio written yet.'}
         </p>
       </div>
 
       {/* Dating Intro Attributes Matrix: State, Gender, Tribe, Occupation, Body Type, Height, Religion */}
       {specs.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-0.5">
             Personal Details
           </span>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
             {specs.map((item, idx) => {
               const Icon = item.icon;
               return (
                 <div
                   key={idx}
-                  className="p-2 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-2 hover:bg-white/[0.06] transition-colors"
+                  className="p-1.5 sm:p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-1.5 sm:gap-2 hover:bg-white/[0.06] transition-colors min-w-0"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                    <Icon size={14} />
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Icon size={13} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider leading-none mb-0.5 truncate">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <span className="text-[9px] sm:text-[10px] text-slate-400 block uppercase tracking-wider leading-none mb-0.5 truncate">
                       {item.label}
                     </span>
-                    <span className="text-xs font-semibold text-white block truncate">
+                    <span className="text-[11px] sm:text-xs font-semibold text-white block truncate">
                       {item.value}
                     </span>
                   </div>
@@ -573,12 +559,10 @@ function ProfileCard({
         ) : (
           <button
             onClick={onUnlock}
-            disabled={unlocking || cooldownActive || creditsBalance < 1}
+            disabled={unlocking || creditsBalance < 1}
             className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               unlocking
                 ? 'bg-white/5 border border-white/10 text-slate-500 cursor-wait'
-                : cooldownActive
-                ? 'bg-amber-500/10 border border-amber-500/25 text-amber-300 cursor-not-allowed'
                 : creditsBalance < 1
                 ? 'bg-white/5 border border-white/10 text-slate-400 hover:border-emerald-400/40 hover:text-white'
                 : 'bg-gradient-to-r from-emerald-500 to-pink-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-[0.99]'
@@ -586,11 +570,6 @@ function ProfileCard({
           >
             {unlocking ? (
               <span className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full" />
-            ) : cooldownActive ? (
-              <>
-                <LuClock size={15} className="text-amber-400 animate-pulse" />
-                <span>Next Unlock: {formatCountdown(cooldownMs)}</span>
-              </>
             ) : creditsBalance < 1 ? (
               <>
                 <LuLockOpen size={15} />

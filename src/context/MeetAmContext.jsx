@@ -21,20 +21,10 @@ export function MeetAmProvider({ children }) {
 
   const [creditsBalance, setCreditsBalance] = useState(0);
   const [unlockedContacts, setUnlockedContacts] = useState([]);
-  const [recentlyUnlockedAt, setRecentlyUnlockedAt] = useState(null);
   const [enableMediaUploads, setEnableMediaUploads] = useState(true);
   const [enabledIntentValues, setEnabledIntentValues] = useState(
     DEFAULT_INTENT_VALUES
   );
-
-  // Live 1-second clock so countdown timer ticks continuously without page refresh
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const [hasOnboarded, setHasOnboarded] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -57,7 +47,6 @@ export function MeetAmProvider({ children }) {
         setUser(null);
         setCreditsBalance(0);
         setUnlockedContacts([]);
-        setRecentlyUnlockedAt(null);
       }
       setLoading(false);
     });
@@ -72,7 +61,6 @@ export function MeetAmProvider({ children }) {
           setUser(null);
           setCreditsBalance(0);
           setUnlockedContacts([]);
-          setRecentlyUnlockedAt(null);
         }
         setLoading(false);
       }
@@ -102,7 +90,6 @@ export function MeetAmProvider({ children }) {
       if (Array.isArray(uc?.data)) {
         contacts = uc.data;
       } else {
-        // Fallback without join in case of schema discrepancy
         const fallback = await supabase
           .from('unlocked_contacts')
           .select('unlocked_at, profile_id')
@@ -112,13 +99,9 @@ export function MeetAmProvider({ children }) {
       }
 
       setUnlockedContacts(contacts);
-      setRecentlyUnlockedAt(
-        contacts.length ? contacts[0].unlocked_at : null
-      );
     } catch (_err) {
       setCreditsBalance(0);
       setUnlockedContacts([]);
-      setRecentlyUnlockedAt(null);
     }
   }, []);
 
@@ -143,9 +126,6 @@ export function MeetAmProvider({ children }) {
 
       if (!error && Array.isArray(data)) {
         setUnlockedContacts(data);
-        if (data.length > 0) {
-          setRecentlyUnlockedAt(data[0].unlocked_at);
-        }
       } else {
         const fallback = await supabase
           .from('unlocked_contacts')
@@ -154,9 +134,6 @@ export function MeetAmProvider({ children }) {
           .order('unlocked_at', { ascending: false });
         if (Array.isArray(fallback?.data)) {
           setUnlockedContacts(fallback.data);
-          if (fallback.data.length > 0) {
-            setRecentlyUnlockedAt(fallback.data[0].unlocked_at);
-          }
         }
       }
     } catch (_err) {
@@ -188,7 +165,7 @@ export function MeetAmProvider({ children }) {
           if (vals.length > 0) setEnabledIntentValues(vals);
         }
       } catch (_err) {
-        // Defaults are safe if the table changes.
+        // Defaults safe
       }
     })();
     return () => {
@@ -206,9 +183,6 @@ export function MeetAmProvider({ children }) {
       );
       if (error) {
         const msg = error.message || String(error);
-        if (msg.includes('COOLDOWN_ACTIVE')) {
-          return { ok: false, error: 'COOLDOWN_ACTIVE', next_available_at: null };
-        }
         if (msg.includes('INSUFFICIENT_CREDITS')) {
           return { ok: false, error: 'INSUFFICIENT_CREDITS' };
         }
@@ -217,8 +191,6 @@ export function MeetAmProvider({ children }) {
 
       if (data && data.ok) {
         const unlockTime = new Date().toISOString();
-        setRecentlyUnlockedAt(unlockTime);
-        setNow(Date.now());
         setCreditsBalance((prev) => Math.max(0, prev - 1));
         setUnlockedContacts((prev) => [
           {
@@ -300,13 +272,6 @@ export function MeetAmProvider({ children }) {
     [unlockedContacts]
   );
 
-  // Live countdown remaining in ms
-  const cooldownUntilMs = recentlyUnlockedAt
-    ? new Date(recentlyUnlockedAt).getTime() + 24 * 60 * 60 * 1000
-    : 0;
-
-  const cooldownMs = Math.max(0, cooldownUntilMs - now);
-
   const value = useMemo(() => {
     const sortedUnlocked = [...unlockedContacts].sort(
       (a, b) => new Date(b.unlocked_at) - new Date(a.unlocked_at)
@@ -317,7 +282,6 @@ export function MeetAmProvider({ children }) {
       loading,
       creditsBalance,
       unlockedContacts: sortedUnlocked,
-      recentlyUnlockedAt,
       enableMediaUploads,
       enabledIntentValues,
       hasOnboarded,
@@ -339,11 +303,6 @@ export function MeetAmProvider({ children }) {
       notifyMatch,
       isProfileUnlocked,
       getUnlockedContact,
-      cooldownMs,
-      cooldownUntilAt:
-        recentlyUnlockedAt
-          ? new Date(new Date(recentlyUnlockedAt).getTime() + 24 * 60 * 60 * 1000)
-          : null,
       formatCountdown,
     };
   }, [
@@ -352,7 +311,6 @@ export function MeetAmProvider({ children }) {
     loading,
     creditsBalance,
     unlockedContacts,
-    recentlyUnlockedAt,
     enableMediaUploads,
     enabledIntentValues,
     hasOnboarded,
@@ -369,7 +327,6 @@ export function MeetAmProvider({ children }) {
     notifyMatch,
     isProfileUnlocked,
     getUnlockedContact,
-    cooldownMs,
   ]);
 
   return (

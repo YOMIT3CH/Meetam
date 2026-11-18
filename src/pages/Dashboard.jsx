@@ -28,8 +28,6 @@ export default function Dashboard() {
     loading: authLoading,
     creditsBalance,
     unlockedContacts,
-    cooldownMs,
-    formatCountdown,
     boostMyProfile,
     refreshCredits,
     showTopUp,
@@ -224,21 +222,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Cooldown notice - Continuous real-time countdown */}
-        {cooldownMs > 0 && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-4 py-3 text-sm text-amber-200 shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <LuClock size={16} className="text-amber-400 shrink-0" />
-            <span>Next contact unlock available in:</span>
-            <span className="font-mono font-bold text-amber-300 bg-amber-500/25 border border-amber-500/30 px-2 py-0.5 rounded-md">
-              {formatCountdown(cooldownMs)}
-            </span>
-          </div>
-        )}
-
         {/* My Profile card */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -386,18 +369,33 @@ export default function Dashboard() {
 
       {/* Edit / Create Profile Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/95 p-4 sm:p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md cursor-pointer"
+            onClick={() => setShowEditModal(false)}
+          />
+          <div className="relative w-full max-w-2xl max-h-[92dvh] sm:max-h-[88vh] flex flex-col rounded-t-[28px] sm:rounded-3xl border-t sm:border border-white/10 bg-slate-900 shadow-2xl z-10 overflow-hidden text-white">
+            {/* Mobile pull indicator */}
+            <div className="w-full pt-2.5 pb-1 flex justify-center sm:hidden shrink-0 bg-slate-900">
+              <div className="w-10 h-1 bg-white/20 rounded-full" />
+            </div>
+
+            {/* Sticky Header */}
+            <div className="px-4 sm:px-6 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/95 backdrop-blur-md">
               <h2 className="text-base sm:text-lg font-bold text-white">
                 {profile ? 'Edit Profile' : 'Create Profile'}
               </h2>
-              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white p-1">
-                <LuX size={20} />
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <LuX size={18} />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 overscroll-contain">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               <FormField label="Display Name *" required>
                 <input
                   type="text"
@@ -567,23 +565,27 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {saveError && (
-              <p className="mt-3 text-sm text-red-400 flex items-center gap-1.5">
-                <LuCircleAlert size={14} /> {saveError}
-              </p>
-            )}
+              {saveError && (
+                <p className="mt-3 text-xs sm:text-sm text-red-400 flex items-center gap-1.5">
+                  <LuCircleAlert size={14} /> {saveError}
+                </p>
+              )}
+            </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Sticky Footer */}
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
               <button
+                type="button"
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 transition-colors"
+                className="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 transition-colors cursor-pointer text-xs sm:text-sm font-medium"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={saveProfile}
                 disabled={saving || !editForm.display_name}
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-pink-500 text-white font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-shadow disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-shadow disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {saving ? (
                   <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />

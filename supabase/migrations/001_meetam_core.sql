@@ -281,7 +281,6 @@ SECURITY DEFINER SET search_path = public
 AS $$
 DECLARE
   v_owner      UUID := auth.uid();
-  v_latest_at  TIMESTAMPTZ;
   v_balance    INTEGER;
   v_whatsapp   TEXT;
   v_snapchat   TEXT;
@@ -291,7 +290,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'UNAUTHORIZED');
   END IF;
 
-  -- Already unlocked -> return immediately, no charge or cooldown reset.
+  -- Already unlocked -> return immediately, no charge.
   SELECT EXISTS (
     SELECT 1 FROM unlocked_contacts
     WHERE user_id = v_owner AND profile_id = p_profile_id
@@ -308,22 +307,7 @@ BEGIN
     );
   END IF;
 
-  -- Cooldown: most recent unlock within the last 24 hours.
-  SELECT unlocked_at INTO v_latest_at
-  FROM unlocked_contacts
-  WHERE user_id = v_owner
-  ORDER BY unlocked_at DESC
-  LIMIT 1;
-
-  IF v_latest_at IS NOT NULL AND v_latest_at > (NOW() - INTERVAL '24 hours') THEN
-    RETURN jsonb_build_object(
-      'ok', false,
-      'error', 'COOLDOWN_ACTIVE',
-      'next_available_at', v_latest_at + INTERVAL '24 hours'
-    );
-  END IF;
-
-  -- Insufficient credits.
+  -- Insufficient credits check.
   SELECT credits_balance INTO v_balance FROM wallets WHERE user_id = v_owner;
   IF v_balance IS NULL OR v_balance < 1 THEN
     RETURN jsonb_build_object('ok', false, 'error', 'INSUFFICIENT_CREDITS');
