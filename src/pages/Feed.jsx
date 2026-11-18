@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import supabase from '../lib/supabase';
 import { useMeetAm } from '../context/MeetAmContext';
 import AppNavbar from '../components/AppNavbar';
 import CreditTopUpModal from '../components/CreditTopUpModal';
 import AnnouncementBanner from '../components/AnnouncementBanner';
+import { rankProfiles } from '../lib/feedAlgorithm';
 import {
   NIGERIAN_STATES,
   INTENTS,
@@ -44,6 +45,7 @@ export default function Feed() {
     getUnlockedContact,
     refreshCredits,
     refreshUnlockedContacts,
+    unlockedContacts,
     showTopUp,
     setShowTopUp,
   } = useMeetAm();
@@ -52,6 +54,28 @@ export default function Feed() {
   useEffect(() => {
     if (!authLoading && !user) navigate('/login', { replace: true });
   }, [authLoading, user, navigate]);
+
+  // ---- Viewer's own profile (for algorithm personalisation) ----
+  const [viewerMeta, setViewerMeta] = useState({ state: '', tribe: '', intent: '' });
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('state, location_state, tribe, intent')
+      .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setViewerMeta({
+            state: data.state || data.location_state || '',
+            tribe: data.tribe || '',
+            intent: data.intent || '',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
   // ---- Filters ----
   const [filterState, setFilterState] = useState('');
@@ -89,21 +113,35 @@ export default function Feed() {
     setFeedLoading(false);
     if (error || !data) return;
 
+    // ── Run ranking algorithm ──────────────────────────────────────────
+    const unlockedIds = unlockedContacts.map((c) => c.profile_id);
+    const ranked = rankProfiles(data, viewerMeta, unlockedIds);
+    // ──────────────────────────────────────────────────────────────────
+
     setHasMore(data.length === PAGE_SIZE);
     if (reset) {
-      setProfiles(data);
+      setProfiles(ranked);
       setPage(1);
     } else {
-      setProfiles((prev) => [...prev, ...data]);
+      setProfiles((prev) => [...prev, ...ranked]);
       setPage((p) => p + 1);
     }
-  }, [page, filterState, filterGender, filterIntents, user]);
+  }, [page, filterState, filterGender, filterIntents, user, viewerMeta, unlockedContacts]);
 
   // Initial load + filter changes
   useEffect(() => {
     if (!authLoading && user) fetchProfiles(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user, filterState, filterGender, filterIntents]);
+
+  // Re-rank in-memory when viewer's own profile loads (async after feed)
+  useEffect(() => {
+    if (!viewerMeta.state && !viewerMeta.tribe && !viewerMeta.intent) return;
+    if (profiles.length === 0) return;
+    const unlockedIds = unlockedContacts.map((c) => c.profile_id);
+    setProfiles((prev) => rankProfiles(prev, viewerMeta, unlockedIds));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerMeta]);
 
   const handleUnlock = async (profileId) => {
     if (unlockingId) return;
@@ -294,6 +332,7 @@ export default function Feed() {
                 onUnlock={() => handleUnlock(profile.id)}
                 unlocking={unlockingId === profile.id}
                 creditsBalance={creditsBalance}
+                score={profile._score}
               />
             ))}
           </div>
@@ -330,6 +369,7 @@ function ProfileCard({
   onUnlock,
   unlocking,
   creditsBalance,
+  score,
 }) {
   const intentLabel = INTENT_LOOKUP[profile.intent] || profile.intent || null;
 
@@ -346,6 +386,9 @@ function ProfileCard({
   const locationText = [area, state].filter(Boolean).join(', ');
   const bio = profile.about_me || profile.bio;
   const lookingFor = profile.looking_for;
+
+  // "For You" = algorithm scored this profile highly (≥ 55) but it's not boosted
+  const isForYou = typeof score === 'number' && score >= 55 && !profile.is_featured;
 
   // Format body type
   const bodyTypeLookup = {
@@ -365,7 +408,7 @@ function ProfileCard({
     ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase()
     : null;
 
-  // Gather core dating intro attributes: State, Gender, Tribe, Occupation, Body Type, Height, Religion
+  // Gather core dating intro attributes
   const specs = [
     genderDisplay && { label: 'Gender', value: genderDisplay, icon: LuUser },
     state && { label: 'State', value: state, icon: LuMapPin },
@@ -377,7 +420,7 @@ function ProfileCard({
     profile.religion && { label: 'Religion', value: profile.religion, icon: LuHeart },
   ].filter(Boolean);
 
-  // Initials for avatar badge
+  // Initials for avatar fallback
   const initials = displayName
     .split(' ')
     .filter(Boolean)
@@ -388,17 +431,30 @@ function ProfileCard({
 
   return (
     <div
-      className={`relative rounded-3xl border bg-slate-900/80 p-4 sm:p-5.5 flex flex-col gap-3.5 sm:gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${
+      className={`relative rounded-3xl border bg-slate-900/80 p-4 sm:p-5 flex flex-col gap-3.5 sm:gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${
         profile.is_featured
           ? 'border-emerald-400/50 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/20'
+          : isForYou
+          ? 'border-pink-400/30 shadow-md shadow-pink-500/5'
           : 'border-white/10 hover:border-white/20'
       }`}
     >
       {/* Top Bar: Avatar, Name & Age, Badges */}
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-400/20 to-pink-500/20 border border-white/10 flex items-center justify-center font-bold text-white text-sm sm:text-base shadow-inner shrink-0">
-            {initials}
+          {/* Avatar — photo or initials */}
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden border border-white/10 shrink-0">
+            {profile.photo_url ? (
+              <img
+                src={profile.photo_url}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-emerald-400/20 to-pink-500/20 flex items-center justify-center font-bold text-white text-sm sm:text-base">
+                {initials}
+              </div>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-white text-base sm:text-lg tracking-tight truncate">
@@ -414,12 +470,16 @@ function ProfileCard({
           </div>
         </div>
 
-        {/* Featured Badge */}
-        {profile.is_featured && (
-          <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full uppercase tracking-wider shadow-sm">
+        {/* Top-right badge: Boosted > For You > nothing */}
+        {profile.is_featured ? (
+          <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-400/30 px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
             <LuZap size={10} /> Boosted
           </span>
-        )}
+        ) : isForYou ? (
+          <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-pink-300 bg-pink-500/15 border border-pink-400/30 px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
+            <LuHeart size={10} /> For You
+          </span>
+        ) : null}
       </div>
 
       {/* Relationship Intent Pill (if specified) */}

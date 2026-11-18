@@ -71,6 +71,7 @@ export const BODY_TYPES = [
 
 export const PUBLIC_PROFILE_FIELDS = [
   'id',
+  'user_id',
   'display_name',
   'full_name',
   'age',
@@ -89,6 +90,8 @@ export const PUBLIC_PROFILE_FIELDS = [
   'bio',
   'looking_for',
   'interests',
+  'photo_url',
+  'whatsapp_number',
   'is_active',
   'is_featured',
   'featured_until',
