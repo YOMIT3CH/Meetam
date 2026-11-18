@@ -5,7 +5,6 @@ import Register from './pages/Register.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import Terms from './pages/Terms.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import Admin from './pages/Admin.jsx';
 import Support from './pages/Support.jsx';
 import Profile from './pages/Profile.jsx';
@@ -23,7 +22,7 @@ function App() {
         <Route path="/feed" element={<Feed />} />
         <Route path="/browse" element={<Navigate to="/feed" replace />} />
         <Route path="/terms" element={<Terms />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Navigate to="/profile" replace />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/support" element={<Support />} />
         <Route path="/profile" element={<Profile />} />

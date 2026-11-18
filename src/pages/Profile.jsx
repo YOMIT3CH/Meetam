@@ -5,7 +5,7 @@ import { useMeetAm } from '../context/MeetAmContext'
 import AppNavbar from '../components/AppNavbar'
 import AnnouncementBanner from '../components/AnnouncementBanner'
 import CreditTopUpModal from '../components/CreditTopUpModal'
-import { NIGERIAN_STATES, INTENTS, BODY_TYPES } from '../lib/data'
+import { NIGERIAN_STATES, INTENTS, BODY_TYPES, INTENT_LOOKUP } from '../lib/data'
 import {
   LuPencil,
   LuMapPin,
@@ -25,6 +25,11 @@ import {
   LuX,
   LuLogOut,
   LuLayoutGrid,
+  LuCreditCard,
+  LuLockOpen,
+  LuZap,
+  LuRocket,
+  LuCheck,
 } from 'react-icons/lu'
 
 // ── Gradient initials avatar ──────────────────────────────────────────────────
@@ -44,27 +49,48 @@ function InitialsAvatar({ name = '', size = 'lg' }) {
     'from-amber-500 to-orange-500',
     'from-sky-500 to-blue-500',
   ]
-  const idx = name.charCodeAt(0) % gradients.length
-  const grad = gradients[idx] || gradients[0]
+  const idx = (name.charCodeAt(0) || 0) % gradients.length
 
   const sizeClass =
-    size === 'lg'
-      ? 'w-28 h-28 text-3xl'
-      : size === 'md'
+    size === 'xl'
+      ? 'w-24 h-24 text-3xl'
+      : size === 'lg'
       ? 'w-16 h-16 text-xl'
+      : size === 'md'
+      ? 'w-14 h-14 text-lg'
       : 'w-10 h-10 text-base'
 
   return (
     <div
-      className={`${sizeClass} rounded-full bg-gradient-to-br ${grad} flex items-center justify-center font-bold text-white shrink-0 select-none`}
+      className={`${sizeClass} rounded-2xl bg-gradient-to-br ${gradients[idx]} flex items-center justify-center font-bold text-white shrink-0 select-none`}
     >
-      {initials || <LuUser size={28} />}
+      {initials || <LuUser size={22} />}
     </div>
   )
 }
 
-// ── A single stat pill ────────────────────────────────────────────────────────
-function StatPill({ icon: Icon, label, value, iconColor = 'text-slate-400' }) {
+// ── Stat summary card ─────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, highlight, action }) {
+  return (
+    <div
+      className={`rounded-2xl border p-4 flex flex-col gap-2 ${
+        highlight ? 'border-amber-400/30 bg-amber-500/5' : 'border-white/10 bg-white/[0.03]'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className="text-xs text-slate-400 font-medium">{label}</span>
+      </div>
+      <p className={`text-2xl font-bold leading-none ${highlight ? 'text-amber-300' : 'text-white'}`}>
+        {value}
+      </p>
+      {action && <div className="mt-0.5">{action}</div>}
+    </div>
+  )
+}
+
+// ── A single detail pill ──────────────────────────────────────────────────────
+function DetailPill({ icon: Icon, label, value, iconColor = 'text-slate-400' }) {
   return (
     <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/8">
       <Icon size={15} className={`${iconColor} shrink-0 mt-0.5`} />
@@ -73,14 +99,21 @@ function StatPill({ icon: Icon, label, value, iconColor = 'text-slate-400' }) {
           {label}
         </p>
         <p className="text-sm text-white font-medium mt-0.5 capitalize leading-snug break-words">
-          {value || <span className="text-slate-500 italic">Not set</span>}
+          {value || <span className="text-slate-500 italic font-normal">Not set</span>}
         </p>
       </div>
     </div>
   )
 }
 
-// ── Field wrapper for the edit modal ─────────────────────────────────────────
+// ── Section heading ───────────────────────────────────────────────────────────
+function SectionLabel({ children }) {
+  return (
+    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">{children}</p>
+  )
+}
+
+// ── Edit modal field wrapper ──────────────────────────────────────────────────
 function EditField({ label, children }) {
   return (
     <div>
@@ -92,37 +125,49 @@ function EditField({ label, children }) {
   )
 }
 
-const INPUT_CLS =
-  'w-full h-11 px-3.5 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20 placeholder:text-slate-500'
-const SELECT_CLS =
-  'w-full h-11 px-3.5 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all hover:border-white/20 appearance-none'
+const IC = 'w-full h-11 px-3.5 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20 placeholder:text-slate-500'
+const SC = 'w-full h-11 px-3.5 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all hover:border-white/20 appearance-none'
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Profile() {
   const navigate = useNavigate()
-  const { creditsBalance, logout } = useMeetAm()
+  const {
+    user,
+    loading: authLoading,
+    creditsBalance,
+    unlockedContacts,
+    boostMyProfile,
+    refreshCredits,
+    showTopUp,
+    setShowTopUp,
+  } = useMeetAm()
 
-  const [authUser, setAuthUser] = useState(null)
   const [profileData, setProfileData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
-  // Photo upload state (edit modal)
+  // Boost state
+  const [boosting, setBoosting] = useState(false)
+  const [boostMsg, setBoostMsg] = useState(null)
+
+  // Photo upload
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const photoInputRef = useRef(null)
 
-  // Edit form state — all fields
+  // Edit form
   const [editName, setEditName] = useState('')
   const [editBio, setEditBio] = useState('')
   const [editLookingFor, setEditLookingFor] = useState('')
   const [editInterests, setEditInterests] = useState('')
   const [editOrientation, setEditOrientation] = useState('')
   const [editTribe, setEditTribe] = useState('')
+  const [editReligion, setEditReligion] = useState('')
   const [editOccupation, setEditOccupation] = useState('')
   const [editBodyType, setEditBodyType] = useState('')
   const [editHeight, setEditHeight] = useState('')
@@ -132,40 +177,28 @@ export default function Profile() {
   const [editWhatsapp, setEditWhatsapp] = useState('')
   const [editSnapchat, setEditSnapchat] = useState('')
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) navigate('/login', { replace: true })
+  }, [authLoading, user, navigate])
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 3500)
   }
 
-  const fetchUserProfile = async () => {
+  const fetchProfile = async () => {
+    if (!user) return
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        setAuthUser(null)
-        setProfileData(null)
-        setLoading(false)
-        return
-      }
-
-      setAuthUser(user)
-
-      const { data, error: profileError } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .or(`id.eq.${user.id},user_id.eq.${user.id}`)
         .maybeSingle()
-
-      if (profileError) console.error(profileError)
-
-      if (data) {
-        setProfileData(data)
-        prefillEdit(data)
-      }
+      setProfileData(data || null)
+      if (data) prefillEdit(data)
     } catch (err) {
-      setError(err.message || 'Failed to load profile')
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -178,6 +211,7 @@ export default function Profile() {
     setEditInterests(Array.isArray(d.interests) ? d.interests.join(', ') : '')
     setEditOrientation(d.orientation || '')
     setEditTribe(d.tribe || '')
+    setEditReligion(d.religion || '')
     setEditOccupation(d.occupation || '')
     setEditBodyType(d.body_type || '')
     setEditHeight(d.height || '')
@@ -191,54 +225,46 @@ export default function Profile() {
   }
 
   useEffect(() => {
-    fetchUserProfile()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'USER_UPDATED') fetchUserProfile()
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+    if (user) fetchProfile()
+  }, [user])
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Photo must be less than 5 MB')
+      return
+    }
+    setError('')
     setPhotoFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setPhotoPreview(ev.target.result)
     reader.readAsDataURL(file)
   }
 
-  const handleSaveProfile = async () => {
-    if (!authUser) return
+  const handleSave = async () => {
+    if (!user) return
     setSaving(true)
+    setSaveSuccess(false)
     setError('')
 
     try {
       let finalPhotoUrl = profileData?.photo_url || null
 
-      // Upload new photo if selected
       if (photoFile) {
         const ext = photoFile.name.split('.').pop()
-        const path = `avatars/${authUser.id}.${ext}`
+        const path = `avatars/${user.id}_${Date.now()}.${ext}`
         const { error: upErr } = await supabase.storage
-          .from('profile-photos')
+          .from('avatars')
           .upload(path, photoFile, { upsert: true })
         if (!upErr) {
-          const { data: urlData } = supabase.storage
-            .from('profile-photos')
-            .getPublicUrl(path)
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
           finalPhotoUrl = urlData?.publicUrl || finalPhotoUrl
         }
       }
 
       const interestsArray = editInterests
-        ? editInterests
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
+        ? editInterests.split(',').map((s) => s.trim()).filter(Boolean)
         : []
 
       const payload = {
@@ -250,6 +276,7 @@ export default function Profile() {
         interests: interestsArray,
         orientation: editOrientation,
         tribe: editTribe,
+        religion: editReligion,
         occupation: editOccupation,
         body_type: editBodyType,
         height: editHeight,
@@ -273,57 +300,66 @@ export default function Profile() {
       } else {
         const { error: insertErr } = await supabase.from('profiles').insert({
           ...payload,
-          id: authUser.id,
-          user_id: authUser.id,
+          id: user.id,
+          user_id: user.id,
         })
         if (insertErr) throw insertErr
       }
 
-      await fetchUserProfile()
-      setShowEditModal(false)
-      showToast('Profile updated successfully!')
+      setSaveSuccess(true)
+      await fetchProfile()
+      setTimeout(() => {
+        setSaveSuccess(false)
+        setShowEditModal(false)
+        showToast('Profile saved!')
+      }, 900)
     } catch (err) {
-      setError(err.message || 'Failed to update profile')
+      setError(err.message || 'Failed to save profile')
     } finally {
       setSaving(false)
     }
   }
 
+  const handleBoost = async () => {
+    if (!profileData) return
+    setBoosting(true)
+    setBoostMsg(null)
+    const result = await boostMyProfile(profileData.id)
+    setBoosting(false)
+    if (result?.ok) {
+      setBoostMsg({ ok: true, text: 'Profile boosted for 24 hours! 🚀' })
+      refreshCredits()
+      await fetchProfile()
+    } else if (result?.error === 'INSUFFICIENT_CREDITS') {
+      setShowTopUp(true)
+    } else {
+      setBoostMsg({ ok: false, text: result?.error || 'Boost failed.' })
+    }
+  }
+
   const handleLogout = async () => {
-    await logout()
+    await supabase.auth.signOut()
     navigate('/login')
   }
 
-  // ── Loading ────────────────────────────────────────────────────────────────
-  if (loading) {
+  // ── Loading / unauthenticated ─────────────────────────────────────────────
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin h-10 w-10 border-4 border-emerald-500/20 border-t-emerald-400 rounded-full" />
-          <p className="text-slate-400 text-sm">Loading profile…</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!authUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-        <div className="text-center space-y-4">
-          <p className="text-slate-400 text-sm">Please log in to view your profile</p>
-          <button
-            className="bg-gradient-to-r from-emerald-500 to-pink-500 text-white px-6 py-3 rounded-xl font-medium"
-            onClick={() => navigate('/login')}
-          >
-            Go to Login
-          </button>
+          <p className="text-slate-400 text-sm">Loading…</p>
         </div>
       </div>
     )
   }
 
   const displayName =
-    profileData?.full_name || profileData?.display_name || authUser.email?.split('@')[0] || 'You'
+    profileData?.full_name ||
+    profileData?.display_name ||
+    user?.email?.split('@')[0] ||
+    'You'
+
   const location = [
     profileData?.area || profileData?.location_city,
     profileData?.state || profileData?.location_state,
@@ -332,39 +368,49 @@ export default function Profile() {
     .join(', ')
 
   const intentLabel =
-    INTENTS.find((i) => i.value === profileData?.intent)?.label || profileData?.intent
+    INTENT_LOOKUP?.[profileData?.intent] ||
+    INTENTS.find((i) => i.value === profileData?.intent)?.label ||
+    profileData?.intent
+
+  const isBoosted =
+    profileData?.is_featured &&
+    profileData?.featured_until &&
+    new Date(profileData.featured_until) > new Date()
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <AppNavbar />
       <AnnouncementBanner />
 
-      {/* ── Toast ────────────────────────────────────────────────────────── */}
+      {/* Top-up modal */}
+      <CreditTopUpModal
+        open={showTopUp}
+        onClose={() => setShowTopUp(false)}
+        onCompleted={() => { setShowTopUp(false); refreshCredits() }}
+      />
+
+      {/* Toast */}
       {toast && (
         <div
-          className={`fixed top-20 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md border text-sm font-medium transition-all ${
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md border text-sm font-medium whitespace-nowrap ${
             toast.type === 'error'
               ? 'bg-red-500/20 border-red-500/30 text-red-300'
               : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
           }`}
         >
-          {toast.type === 'error' ? (
-            <LuCircleAlert size={16} />
-          ) : (
-            <LuCircleCheck size={16} />
-          )}
+          {toast.type === 'error' ? <LuCircleAlert size={16} /> : <LuCircleCheck size={16} />}
           {toast.msg}
         </div>
       )}
 
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-28 space-y-4">
-        {/* ── Hero Card ──────────────────────────────────────────────────── */}
-        <div className="relative rounded-3xl overflow-hidden border border-white/10">
-          {/* gradient bg strip */}
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-pink-500/20" />
 
-          <div className="relative px-5 pt-8 pb-5">
-            {/* Avatar + Edit button row */}
+        {/* ── HERO CARD ──────────────────────────────────────────────────── */}
+        <div className="relative rounded-3xl overflow-hidden border border-white/10">
+          <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-pink-500/20 pointer-events-none" />
+
+          <div className="relative px-5 pt-7 pb-5">
+            {/* Avatar + action buttons */}
             <div className="flex items-end justify-between gap-3 mb-4">
               <div className="relative">
                 {profileData?.photo_url ? (
@@ -374,19 +420,19 @@ export default function Profile() {
                     className="w-24 h-24 rounded-2xl object-cover border-2 border-white/20 shadow-xl"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-2xl border-2 border-white/20 shadow-xl overflow-hidden">
-                    <InitialsAvatar name={displayName} size="lg" />
+                  <div className="border-2 border-white/20 shadow-xl rounded-2xl overflow-hidden">
+                    <InitialsAvatar name={displayName} size="xl" />
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-2 mb-1">
+              <div className="flex gap-2 mb-1 flex-wrap justify-end">
                 <button
                   onClick={() => { prefillEdit(profileData || {}); setShowEditModal(true) }}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold transition-all cursor-pointer"
                 >
                   <LuPencil size={13} />
-                  Edit
+                  Edit Profile
                 </button>
                 <button
                   onClick={handleLogout}
@@ -419,7 +465,7 @@ export default function Profile() {
               )}
             </div>
 
-            {/* Intent badge + credits */}
+            {/* Badges */}
             <div className="flex flex-wrap items-center gap-2 mt-3">
               {intentLabel && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs font-semibold">
@@ -427,58 +473,113 @@ export default function Profile() {
                   {intentLabel}
                 </span>
               )}
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
-                <LuSparkles size={11} />
-                {creditsBalance} credit{creditsBalance !== 1 ? 's' : ''}
-              </span>
+              {isBoosted && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
+                  <LuZap size={11} />
+                  Boosted
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* ── Bio ────────────────────────────────────────────────────────── */}
+        {/* ── STATS ROW ──────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard
+            icon={<LuCreditCard size={16} className="text-emerald-400" />}
+            label="Credits"
+            value={creditsBalance}
+            action={
+              <button
+                onClick={() => setShowTopUp(true)}
+                className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium cursor-pointer"
+              >
+                Top up →
+              </button>
+            }
+          />
+          <StatCard
+            icon={<LuLockOpen size={16} className="text-pink-400" />}
+            label="Unlocked"
+            value={unlockedContacts.length}
+          />
+          <StatCard
+            icon={<LuZap size={16} className="text-amber-400" />}
+            label="Boost"
+            value={isBoosted ? 'Active' : 'Off'}
+            highlight={isBoosted}
+            action={
+              !isBoosted && (
+                <button
+                  onClick={handleBoost}
+                  disabled={boosting || creditsBalance < 1}
+                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-40 font-medium cursor-pointer"
+                >
+                  {boosting ? 'Boosting…' : '1 credit →'}
+                </button>
+              )
+            }
+          />
+        </div>
+
+        {/* Boost feedback */}
+        {boostMsg && (
+          <div
+            className={`flex items-center gap-2 text-sm px-4 py-3 rounded-xl border ${
+              boostMsg.ok
+                ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                : 'text-red-400 bg-red-500/10 border-red-500/20'
+            }`}
+          >
+            {boostMsg.ok ? <LuRocket size={15} /> : <LuCircleAlert size={15} />}
+            {boostMsg.text}
+          </div>
+        )}
+
+        {/* ── BIO ──────────────────────────────────────────────────────────── */}
         {(profileData?.bio || profileData?.about_me) && (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">About Me</p>
+            <SectionLabel>About Me</SectionLabel>
             <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
               {profileData.bio || profileData.about_me}
             </p>
           </div>
         )}
 
-        {/* ── Looking For ────────────────────────────────────────────────── */}
+        {/* ── LOOKING FOR ──────────────────────────────────────────────────── */}
         {profileData?.looking_for && (
           <div className="rounded-2xl border border-pink-500/20 bg-pink-500/5 px-5 py-4">
-            <p className="text-xs font-bold text-pink-400/70 uppercase tracking-wider mb-2">Looking For</p>
+            <SectionLabel>Looking For</SectionLabel>
             <p className="text-sm text-pink-200 italic leading-relaxed">
               "{profileData.looking_for}"
             </p>
           </div>
         )}
 
-        {/* ── Stats grid ─────────────────────────────────────────────────── */}
+        {/* ── PROFILE DETAILS ──────────────────────────────────────────────── */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Profile Details</p>
+          <SectionLabel>Profile Details</SectionLabel>
           <div className="grid grid-cols-2 gap-2.5">
-            <StatPill icon={LuGlobe} label="Tribe / Ethnicity" value={profileData?.tribe} iconColor="text-sky-400" />
-            <StatPill icon={LuBriefcase} label="Occupation" value={profileData?.occupation} iconColor="text-amber-400" />
-            <StatPill
+            <DetailPill icon={LuGlobe} label="Tribe" value={profileData?.tribe} iconColor="text-sky-400" />
+            <DetailPill icon={LuBriefcase} label="Occupation" value={profileData?.occupation} iconColor="text-amber-400" />
+            <DetailPill
               icon={LuSparkles}
               label="Body Type"
               value={profileData?.body_type?.replace(/_/g, ' ')}
               iconColor="text-purple-400"
             />
-            <StatPill icon={LuRuler} label="Height" value={profileData?.height} iconColor="text-teal-400" />
-            <StatPill icon={LuUser} label="Orientation" value={profileData?.orientation} iconColor="text-pink-400" />
-            {intentLabel && (
-              <StatPill icon={LuHeart} label="Intent" value={intentLabel} iconColor="text-rose-400" />
+            <DetailPill icon={LuRuler} label="Height" value={profileData?.height} iconColor="text-teal-400" />
+            <DetailPill icon={LuUser} label="Orientation" value={profileData?.orientation} iconColor="text-pink-400" />
+            {profileData?.religion && (
+              <DetailPill icon={LuGlobe} label="Religion" value={profileData.religion} iconColor="text-indigo-400" />
             )}
           </div>
         </div>
 
-        {/* ── Interests ──────────────────────────────────────────────────── */}
+        {/* ── INTERESTS ────────────────────────────────────────────────────── */}
         {profileData?.interests?.length > 0 && (
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Interests</p>
+            <SectionLabel>Interests</SectionLabel>
             <div className="flex flex-wrap gap-2">
               {profileData.interests.map((tag) => (
                 <span
@@ -492,11 +593,11 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ── Contact Handles (private info) ─────────────────────────────── */}
+        {/* ── CONTACT HANDLES ──────────────────────────────────────────────── */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contact Handles</p>
-            <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+            <SectionLabel>Contact Handles</SectionLabel>
+            <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium -mt-3">
               <LuShieldCheck size={12} />
               Private to others
             </span>
@@ -507,9 +608,7 @@ export default function Profile() {
               <div className="min-w-0">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">WhatsApp</p>
                 <p className="text-sm text-white font-medium mt-0.5 truncate">
-                  {profileData?.whatsapp_number || (
-                    <span className="text-slate-500 italic">Not set</span>
-                  )}
+                  {profileData?.whatsapp_number || <span className="text-slate-500 italic font-normal">Not set</span>}
                 </p>
               </div>
             </div>
@@ -518,16 +617,64 @@ export default function Profile() {
               <div className="min-w-0">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Snapchat</p>
                 <p className="text-sm text-white font-medium mt-0.5 truncate">
-                  {profileData?.snapchat_handle || (
-                    <span className="text-slate-500 italic">Not set</span>
-                  )}
+                  {profileData?.snapchat_handle || <span className="text-slate-500 italic font-normal">Not set</span>}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Quick nav ──────────────────────────────────────────────────── */}
+        {/* ── UNLOCKED CONTACTS ────────────────────────────────────────────── */}
+        {unlockedContacts.length > 0 && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+            <SectionLabel>Unlocked Contacts ({unlockedContacts.length})</SectionLabel>
+            <div className="space-y-2.5">
+              {unlockedContacts.map((c) => {
+                const name = c.profiles?.display_name || c.profiles?.full_name || 'Member'
+                const wa = c.profiles?.whatsapp_number || c.whatsapp_number
+                const snap = c.profiles?.snapchat_handle || c.snapchat_handle
+
+                return (
+                  <div
+                    key={c.profile_id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-white/8 bg-slate-900/50 hover:bg-slate-900 transition-colors"
+                  >
+                    <div>
+                      <p className="font-semibold text-white text-sm">{name}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Unlocked {new Date(c.unlocked_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {wa && (
+                        <a
+                          href={`https://wa.me/${wa.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-300 text-xs font-semibold hover:bg-green-500 hover:text-white transition-colors"
+                        >
+                          <LuMessageCircle size={13} />
+                          {wa}
+                        </a>
+                      )}
+                      {snap && (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 text-xs font-semibold">
+                          <LuGhost size={13} />
+                          {snap.startsWith('@') ? snap : `@${snap}`}
+                        </span>
+                      )}
+                      {!wa && !snap && (
+                        <span className="text-xs text-slate-500 italic">No handles set</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── QUICK NAV ────────────────────────────────────────────────────── */}
         <button
           onClick={() => navigate('/feed')}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-white/5 hover:bg-white/8 border border-white/10 text-slate-400 hover:text-white text-sm font-medium transition-all cursor-pointer"
@@ -537,17 +684,13 @@ export default function Profile() {
         </button>
       </div>
 
-      {/* ══════════════ EDIT PROFILE MODAL ══════════════════════════════════ */}
+      {/* ══════════════════════ EDIT PROFILE MODAL ══════════════════════════ */}
       {showEditModal && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          {/* backdrop */}
-          <div
-            className="absolute inset-0 cursor-pointer"
-            onClick={() => setShowEditModal(false)}
-          />
+          <div className="absolute inset-0 cursor-pointer" onClick={() => setShowEditModal(false)} />
 
           <div className="relative bg-slate-900 border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-2xl max-w-lg w-full max-h-[94dvh] flex flex-col shadow-2xl z-10 overflow-hidden">
-            {/* drag handle (mobile) */}
+            {/* Mobile drag handle */}
             <div className="w-full pt-2.5 pb-1 flex justify-center sm:hidden shrink-0">
               <div className="w-10 h-1 bg-white/20 rounded-full" />
             </div>
@@ -556,14 +699,14 @@ export default function Profile() {
             <div className="px-5 py-3.5 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/95 backdrop-blur-md">
               <h2 className="text-base font-bold text-white">Edit Profile</h2>
               <button
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
                 onClick={() => setShowEditModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
               >
                 <LuX size={16} />
               </button>
             </div>
 
-            {/* Error banner */}
+            {/* Error */}
             {error && (
               <div className="mx-5 mt-3 flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs shrink-0">
                 <LuCircleAlert size={14} className="shrink-0 mt-0.5" />
@@ -574,7 +717,7 @@ export default function Profile() {
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 overscroll-contain">
 
-              {/* ── Photo upload ── */}
+              {/* Photo */}
               <div>
                 <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 block">
                   Profile Photo
@@ -586,24 +729,18 @@ export default function Profile() {
                     ) : profileData?.photo_url ? (
                       <img src={profileData.photo_url} alt="Current" className="w-full h-full object-cover" />
                     ) : (
-                      <InitialsAvatar name={editName || displayName} size="md" />
+                      <InitialsAvatar name={editName || displayName} size="lg" />
                     )}
                   </div>
                   <div>
-                    <input
-                      ref={photoInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      className="hidden"
-                    />
+                    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
                     <button
                       type="button"
                       onClick={() => photoInputRef.current?.click()}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold cursor-pointer transition-colors"
                     >
                       <LuCamera size={13} />
-                      {photoPreview ? 'Change Photo' : 'Upload Photo'}
+                      {photoPreview ? 'Change' : 'Upload Photo'}
                     </button>
                     <p className="text-[11px] text-slate-500 mt-1">
                       {photoFile ? photoFile.name : 'PNG, JPG or WebP · max 5 MB'}
@@ -612,17 +749,12 @@ export default function Profile() {
                 </div>
               </div>
 
+              {/* Basic Info */}
               <div className="border-t border-white/8 pt-3 space-y-3.5">
                 <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Basic Info</p>
 
                 <EditField label="Full Name *">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder="Your full name"
-                    className={INPUT_CLS}
-                  />
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Your name" className={IC} />
                 </EditField>
 
                 <EditField label="Bio / About Me">
@@ -636,57 +768,34 @@ export default function Profile() {
                 </EditField>
 
                 <EditField label="Looking For">
-                  <input
-                    type="text"
-                    value={editLookingFor}
-                    onChange={(e) => setEditLookingFor(e.target.value)}
-                    placeholder="e.g. Someone kind, ambitious, funny…"
-                    className={INPUT_CLS}
-                  />
+                  <input type="text" value={editLookingFor} onChange={(e) => setEditLookingFor(e.target.value)} placeholder="e.g. Someone kind, ambitious…" className={IC} />
                 </EditField>
               </div>
 
+              {/* Dating Specs */}
               <div className="border-t border-white/8 pt-3 space-y-3.5">
                 <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Dating Specs</p>
 
                 <div className="grid grid-cols-2 gap-3">
                   <EditField label="State">
                     <div className="relative">
-                      <select
-                        value={editState}
-                        onChange={(e) => setEditState(e.target.value)}
-                        className={SELECT_CLS}
-                      >
+                      <select value={editState} onChange={(e) => setEditState(e.target.value)} className={SC}>
                         <option value="">Select State</option>
-                        {NIGERIAN_STATES.map((s) => (
-                          <option key={s} value={s} className="bg-slate-900">{s}</option>
-                        ))}
+                        {NIGERIAN_STATES.map((s) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
                       </select>
                       <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </EditField>
 
                   <EditField label="City / Area">
-                    <input
-                      type="text"
-                      value={editCity}
-                      onChange={(e) => setEditCity(e.target.value)}
-                      placeholder="e.g. Lekki, Ikeja"
-                      className={INPUT_CLS}
-                    />
+                    <input type="text" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="e.g. Lekki" className={IC} />
                   </EditField>
 
                   <EditField label="Intent">
                     <div className="relative">
-                      <select
-                        value={editIntent}
-                        onChange={(e) => setEditIntent(e.target.value)}
-                        className={SELECT_CLS}
-                      >
+                      <select value={editIntent} onChange={(e) => setEditIntent(e.target.value)} className={SC}>
                         <option value="">Select Intent</option>
-                        {INTENTS.map((i) => (
-                          <option key={i.value} value={i.value} className="bg-slate-900">{i.label}</option>
-                        ))}
+                        {INTENTS.map((i) => <option key={i.value} value={i.value} className="bg-slate-900">{i.label}</option>)}
                       </select>
                       <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
@@ -694,11 +803,7 @@ export default function Profile() {
 
                   <EditField label="Orientation">
                     <div className="relative">
-                      <select
-                        value={editOrientation}
-                        onChange={(e) => setEditOrientation(e.target.value)}
-                        className={SELECT_CLS}
-                      >
+                      <select value={editOrientation} onChange={(e) => setEditOrientation(e.target.value)} className={SC}>
                         <option value="">Select</option>
                         <option value="straight" className="bg-slate-900">Straight</option>
                         <option value="gay" className="bg-slate-900">Gay</option>
@@ -711,62 +816,37 @@ export default function Profile() {
 
                   <EditField label="Body Type">
                     <div className="relative">
-                      <select
-                        value={editBodyType}
-                        onChange={(e) => setEditBodyType(e.target.value)}
-                        className={SELECT_CLS}
-                      >
+                      <select value={editBodyType} onChange={(e) => setEditBodyType(e.target.value)} className={SC}>
                         <option value="">Select</option>
-                        {BODY_TYPES.map((bt) => (
-                          <option key={bt.value} value={bt.value} className="bg-slate-900">{bt.label}</option>
-                        ))}
+                        {BODY_TYPES.map((bt) => <option key={bt.value} value={bt.value} className="bg-slate-900">{bt.label}</option>)}
                       </select>
                       <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </EditField>
 
                   <EditField label="Height">
-                    <input
-                      type="text"
-                      value={editHeight}
-                      onChange={(e) => setEditHeight(e.target.value)}
-                      placeholder="e.g. 5ft 9in"
-                      className={INPUT_CLS}
-                    />
+                    <input type="text" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} placeholder="e.g. 5ft 9in" className={IC} />
                   </EditField>
 
                   <EditField label="Tribe / Ethnicity">
-                    <input
-                      type="text"
-                      value={editTribe}
-                      onChange={(e) => setEditTribe(e.target.value)}
-                      placeholder="e.g. Yoruba, Igbo, Hausa"
-                      className={INPUT_CLS}
-                    />
+                    <input type="text" value={editTribe} onChange={(e) => setEditTribe(e.target.value)} placeholder="e.g. Yoruba, Igbo" className={IC} />
+                  </EditField>
+
+                  <EditField label="Religion">
+                    <input type="text" value={editReligion} onChange={(e) => setEditReligion(e.target.value)} placeholder="e.g. Christian" className={IC} />
                   </EditField>
 
                   <EditField label="Occupation">
-                    <input
-                      type="text"
-                      value={editOccupation}
-                      onChange={(e) => setEditOccupation(e.target.value)}
-                      placeholder="e.g. Software Engineer"
-                      className={INPUT_CLS}
-                    />
+                    <input type="text" value={editOccupation} onChange={(e) => setEditOccupation(e.target.value)} placeholder="e.g. Software Engineer" className={IC} />
                   </EditField>
                 </div>
 
                 <EditField label="Interests (comma separated)">
-                  <input
-                    type="text"
-                    value={editInterests}
-                    onChange={(e) => setEditInterests(e.target.value)}
-                    placeholder="e.g. Tech, Travel, Music, Football"
-                    className={INPUT_CLS}
-                  />
+                  <input type="text" value={editInterests} onChange={(e) => setEditInterests(e.target.value)} placeholder="e.g. Tech, Travel, Music" className={IC} />
                 </EditField>
               </div>
 
+              {/* Contact Handles */}
               <div className="border-t border-white/8 pt-3 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">Contact Handles</p>
@@ -775,31 +855,17 @@ export default function Profile() {
                     Private until unlocked
                   </span>
                 </div>
-
                 <div className="grid grid-cols-2 gap-3">
-                  <EditField label="WhatsApp Number *">
+                  <EditField label="WhatsApp *">
                     <div className="relative">
                       <LuMessageCircle size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
-                      <input
-                        type="tel"
-                        value={editWhatsapp}
-                        onChange={(e) => setEditWhatsapp(e.target.value)}
-                        placeholder="+2348012345678"
-                        className="w-full h-11 pl-9 pr-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20 placeholder:text-slate-500"
-                      />
+                      <input type="tel" value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} placeholder="+2348012345678" className="w-full h-11 pl-9 pr-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20 placeholder:text-slate-500" />
                     </div>
                   </EditField>
-
-                  <EditField label="Snapchat Handle">
+                  <EditField label="Snapchat">
                     <div className="relative">
                       <LuGhost size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-400 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={editSnapchat}
-                        onChange={(e) => setEditSnapchat(e.target.value)}
-                        placeholder="@yourhandle"
-                        className="w-full h-11 pl-9 pr-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20 placeholder:text-slate-500"
-                      />
+                      <input type="text" value={editSnapchat} onChange={(e) => setEditSnapchat(e.target.value)} placeholder="@yourhandle" className="w-full h-11 pl-9 pr-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all hover:border-white/20 placeholder:text-slate-500" />
                     </div>
                   </EditField>
                 </div>
@@ -809,23 +875,22 @@ export default function Profile() {
             {/* Footer */}
             <div className="shrink-0 px-5 py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
               <button
-                className="flex-1 bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-white/10 transition-all cursor-pointer"
                 onClick={() => setShowEditModal(false)}
+                className="flex-1 bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-white/10 transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 disabled={saving}
+                onClick={handleSave}
                 className="flex-1 bg-gradient-to-r from-emerald-500 to-pink-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                onClick={handleSaveProfile}
               >
                 {saving ? (
-                  <>
-                    <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
-                    Saving…
-                  </>
+                  <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                ) : saveSuccess ? (
+                  <><LuCheck size={15} /> Saved!</>
                 ) : (
-                  'Save Changes'
+                  'Save Profile'
                 )}
               </button>
             </div>

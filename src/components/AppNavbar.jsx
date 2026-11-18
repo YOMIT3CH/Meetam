@@ -6,7 +6,6 @@ import {
   LuMenu,
   LuX,
   LuCompass,
-  LuLayoutDashboard,
   LuUser,
 } from 'react-icons/lu';
 import { useMeetAm } from '../context/MeetAmContext';
@@ -26,7 +25,6 @@ export default function AppNavbar() {
 
   const navItems = [
     { name: 'Browse Feed', path: '/feed', icon: LuCompass },
-    { name: 'Dashboard', path: '/dashboard', icon: LuLayoutDashboard },
     { name: 'My Profile', path: '/profile', icon: LuUser },
   ];
 
