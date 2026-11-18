@@ -28,6 +28,7 @@ import {
   LuUserCheck,
   LuUserX,
   LuImage,
+  LuMegaphone,
 } from 'react-icons/lu';
 
 const ADMIN_PASSCODE = import.meta.env.VITE_ADMIN_PASSCODE || 'admin123';
@@ -1102,18 +1103,37 @@ export default function Admin() {
                       type="checkbox"
                       checked={announcementActive}
                       onChange={(e) => setAnnouncementActive(e.target.checked)}
-                      className="rounded accent-emerald-500"
+                      className="rounded accent-emerald-500 cursor-pointer"
                     />
-                    <span>Active on site</span>
+                    <span className={announcementActive ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>
+                      {announcementActive ? 'Active on site' : 'Inactive (Hidden)'}
+                    </span>
                   </label>
                 </div>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   value={announcementText}
                   onChange={(e) => setAnnouncementText(e.target.value)}
-                  placeholder="Broadcast message to all daters (e.g. Weekend special discounts!)"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Broadcast message to all daters (e.g. System upgrade tonight at 2am. Bank transfers are verified in under 10 minutes.)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 leading-relaxed"
                 />
+
+                {/* Live Preview */}
+                {announcementText.trim() && announcementActive && (
+                  <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/20 text-xs">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1.5">
+                      Live Banner Preview (User UI):
+                    </span>
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 text-slate-200">
+                      <div className="p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
+                        <LuMegaphone size={14} />
+                      </div>
+                      <span className="text-xs text-slate-300 leading-relaxed break-words flex-1">
+                        {announcementText.trim()}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-2">

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import supabase from '../lib/supabase'
 import { useMeetAm } from '../context/MeetAmContext'
 import AppNavbar from '../components/AppNavbar'
+import AnnouncementBanner from '../components/AnnouncementBanner'
 import CreditTopUpModal from '../components/CreditTopUpModal'
 import { LuUsers, LuLogOut, LuArrowLeft, LuPencil } from 'react-icons/lu'
 
@@ -148,6 +149,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <AppNavbar />
+      <AnnouncementBanner />
 
       <div className="pt-6 sm:pt-8 px-3.5 sm:px-6 pb-24 max-w-4xl mx-auto">
         <div className="glass-card p-5 sm:p-8 md:p-10 rounded-2xl mb-8">
