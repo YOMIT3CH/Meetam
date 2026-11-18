@@ -63,6 +63,12 @@ export default function Admin() {
   const [creditAdjustModal, setCreditAdjustModal] = useState(null); // { user_id, display_name, current_credits }
   const [creditDelta, setCreditDelta] = useState(5);
 
+  // Modern Confirmation Modals (Replaces native browser window.confirm / prompt)
+  const [confirmApproveModal, setConfirmApproveModal] = useState(null); // tx object
+  const [confirmRejectModal, setConfirmRejectModal] = useState(null); // tx object
+  const [rejectionReason, setRejectionReason] = useState('Transfer not verified in bank statement');
+  const [confirmToggleUserModal, setConfirmToggleUserModal] = useState(null); // profile object
+
   // App & Bank Settings State
   const [settingsBankName, setSettingsBankName] = useState(BANK_DETAILS.bankName);
   const [settingsAccountName, setSettingsAccountName] = useState(BANK_DETAILS.accountName);
@@ -218,11 +224,8 @@ export default function Admin() {
   }, [isAuthenticated, fetchTransactions, fetchUsers, fetchSettings]);
 
   // APPROVE Top-Up Transaction
-  const handleApproveTx = async (tx) => {
-    if (!window.confirm(`Approve transfer of ₦${tx.amount_ngn?.toLocaleString()} and credit ${tx.credits} credits to this user?`)) {
-      return;
-    }
-
+  const executeApproveTx = async (tx) => {
+    if (!tx) return;
     setProcessingTxId(tx.id);
     try {
       // 1. Try atomic admin RPC
@@ -264,6 +267,7 @@ export default function Admin() {
         showNotification(`Payment approved & ${tx.credits} credits granted!`);
       }
 
+      setConfirmApproveModal(null);
       setSelectedReceipt(null);
       await fetchTransactions();
       // Background refresh to sync all wallets
@@ -276,15 +280,15 @@ export default function Admin() {
   };
 
   // REJECT Top-Up Transaction
-  const handleRejectTx = async (tx) => {
-    const reason = window.prompt('Enter reason for rejection (optional):', 'Transfer not verified in bank statement');
-    if (reason === null) return; // User pressed Cancel
+  const executeRejectTx = async (tx, reason) => {
+    if (!tx) return;
+    const finalReason = (reason || '').trim() || 'Payment not verified in bank statement';
 
     setProcessingTxId(tx.id);
     try {
       const { error: rpcErr } = await supabase.rpc('admin_reject_topup', {
         p_transaction_id: tx.id,
-        p_reason: reason,
+        p_reason: finalReason,
       });
 
       if (rpcErr) {
@@ -295,7 +299,7 @@ export default function Admin() {
             status: 'failed',
             metadata: {
               ...(tx.metadata || {}),
-              rejection_reason: reason,
+              rejection_reason: finalReason,
               rejected_at: new Date().toISOString(),
             },
             updated_at: new Date().toISOString(),
@@ -304,6 +308,7 @@ export default function Admin() {
       }
 
       showNotification('Transaction marked as rejected.');
+      setConfirmRejectModal(null);
       setSelectedReceipt(null);
       await fetchTransactions();
     } catch (err) {
@@ -314,12 +319,9 @@ export default function Admin() {
   };
 
   // Toggle Profile Active / Ban
-  const handleToggleUserActive = async (profile) => {
+  const executeToggleUserActive = async (profile) => {
+    if (!profile) return;
     const nextState = !profile.is_active;
-    const actionLabel = nextState ? 'reactivate' : 'ban';
-    if (!window.confirm(`Are you sure you want to ${actionLabel} ${profile.display_name || 'this member'}?`)) {
-      return;
-    }
 
     try {
       const { error } = await supabase
@@ -328,7 +330,8 @@ export default function Admin() {
         .eq('id', profile.id);
 
       if (error) throw error;
-      showNotification(`Profile ${nextState ? 'activated' : 'deactivated'}.`);
+      showNotification(`Profile ${nextState ? 'activated' : 'deactivated successfully'}.`);
+      setConfirmToggleUserModal(null);
       await fetchUsers();
     } catch (err) {
       showNotification(err.message || 'Failed to update user status', 'error');
@@ -588,15 +591,34 @@ export default function Admin() {
   // ==========================================
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Toast Notification */}
+      {/* Modern Floating Toast Notification */}
       {feedback && (
-        <div className={`fixed top-4 right-4 z-[90] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs sm:text-sm font-semibold border backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
-          feedback.type === 'error'
-            ? 'bg-red-500/20 border-red-500/30 text-red-200'
-            : 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200'
-        }`}>
-          {feedback.type === 'error' ? <LuCircleAlert size={16} /> : <LuCircleCheck size={16} />}
-          <span>{feedback.text}</span>
+        <div className="fixed top-5 right-5 z-[100] max-w-sm w-[calc(100vw-2.5rem)] sm:w-auto animate-in fade-in slide-in-from-top-3 duration-200">
+          <div
+            className={`p-3.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl flex items-center gap-3 text-xs sm:text-sm font-medium border backdrop-blur-xl ${
+              feedback.type === 'error'
+                ? 'bg-red-950/95 border-red-500/40 text-red-200 shadow-red-950/40'
+                : 'bg-slate-900/95 border-emerald-500/40 text-emerald-200 shadow-emerald-950/40'
+            }`}
+          >
+            <div
+              className={`p-1.5 rounded-xl shrink-0 ${
+                feedback.type === 'error'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}
+            >
+              {feedback.type === 'error' ? <LuCircleAlert size={16} /> : <LuCircleCheck size={16} />}
+            </div>
+            <span className="flex-1 leading-snug break-words">{feedback.text}</span>
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+            >
+              <LuX size={15} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -904,7 +926,7 @@ export default function Admin() {
                               <button
                                 type="button"
                                 disabled={processingTxId === tx.id}
-                                onClick={() => handleApproveTx(tx)}
+                                onClick={() => setConfirmApproveModal(tx)}
                                 className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                               >
                                 {processingTxId === tx.id ? (
@@ -920,7 +942,10 @@ export default function Admin() {
                               <button
                                 type="button"
                                 disabled={processingTxId === tx.id}
-                                onClick={() => handleRejectTx(tx)}
+                                onClick={() => {
+                                  setConfirmRejectModal(tx);
+                                  setRejectionReason('Transfer not verified in bank statement');
+                                }}
                                 className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-300 text-xs font-semibold transition-colors cursor-pointer"
                               >
                                 Reject
@@ -1056,7 +1081,7 @@ export default function Admin() {
 
                           <button
                             type="button"
-                            onClick={() => handleToggleUserActive(p)}
+                            onClick={() => setConfirmToggleUserModal(p)}
                             className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
                               p.is_active
                                 ? 'border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-300'
@@ -1257,14 +1282,17 @@ export default function Admin() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleRejectTx(selectedReceipt)}
+                    onClick={() => {
+                      setConfirmRejectModal(selectedReceipt);
+                      setRejectionReason('Transfer not verified in bank statement');
+                    }}
                     className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-300 text-xs font-semibold cursor-pointer"
                   >
                     Reject
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleApproveTx(selectedReceipt)}
+                    onClick={() => setConfirmApproveModal(selectedReceipt)}
                     className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold shadow-md shadow-emerald-500/20 cursor-pointer flex items-center gap-1.5"
                   >
                     <LuCheck size={14} />
@@ -1282,8 +1310,254 @@ export default function Admin() {
       )}
 
       {/* ======================================================== */}
-      {/* MODAL 2: ADJUST CREDITS MODAL */}
+      {/* MODAL 3: MODERN CONFIRM APPROVE MODAL */}
       {/* ======================================================== */}
+      {confirmApproveModal && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl border border-emerald-500/30 bg-slate-900/95 p-6 text-white space-y-4 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                  <LuCircleCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Approve Bank Transfer</h3>
+                  <p className="text-xs text-slate-400">Credit user wallet with purchased tokens</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmApproveModal(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <LuX size={16} />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/5 space-y-2.5 text-xs sm:text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Member:</span>
+                <span className="font-semibold text-white">
+                  {confirmApproveModal.display_name || confirmApproveModal.metadata?.sender_name || 'Member'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Amount Paid:</span>
+                <span className="font-bold text-emerald-400 text-sm">
+                  ₦{Number(confirmApproveModal.amount_ngn || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Credits to Add:</span>
+                <span className="font-bold text-white bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full text-xs">
+                  +{confirmApproveModal.credits} Credits
+                </span>
+              </div>
+              {confirmApproveModal.paystack_ref && (
+                <div className="flex justify-between pt-1 border-t border-white/5 text-[11px]">
+                  <span className="text-slate-400">Reference:</span>
+                  <span className="font-mono text-slate-300">{confirmApproveModal.paystack_ref}</span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Please verify that this amount reflects in the company bank account. This will immediately credit the user's wallet balance.
+            </p>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmApproveModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={processingTxId === confirmApproveModal.id}
+                onClick={() => executeApproveTx(confirmApproveModal)}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {processingTxId === confirmApproveModal.id ? (
+                  <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                ) : (
+                  <>
+                    <LuCheck size={15} />
+                    <span>Confirm &amp; Credit</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 4: MODERN REJECT TRANSFER MODAL */}
+      {/* ======================================================== */}
+      {confirmRejectModal && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl border border-red-500/30 bg-slate-900/95 p-6 text-white space-y-4 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-500/15 text-red-400 flex items-center justify-center border border-red-500/20">
+                  <LuCircleAlert size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Reject Bank Transfer</h3>
+                  <p className="text-xs text-slate-400">Mark payment as unverified / failed</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmRejectModal(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <LuX size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-300">
+                Reason for Rejection:
+              </label>
+              
+              {/* Quick presets */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  'Transfer not verified in bank statement',
+                  'Incorrect amount sent',
+                  'Unclear or unreadable receipt image',
+                  'Duplicate submission',
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setRejectionReason(preset)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                      rejectionReason === preset
+                        ? 'bg-red-500/20 border border-red-500/40 text-red-300'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-400 border border-transparent'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                rows={2}
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Enter explanation for member..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-500 leading-relaxed"
+              />
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmRejectModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={processingTxId === confirmRejectModal.id || !rejectionReason.trim()}
+                onClick={() => executeRejectTx(confirmRejectModal, rejectionReason)}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-red-600/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {processingTxId === confirmRejectModal.id ? (
+                  <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                ) : (
+                  <span>Reject Transfer</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL 5: MODERN BAN / REACTIVATE MEMBER MODAL */}
+      {/* ======================================================== */}
+      {confirmToggleUserModal && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-md rounded-3xl border bg-slate-900/95 p-6 text-white space-y-4 shadow-2xl backdrop-blur-xl ${
+            confirmToggleUserModal.is_active ? 'border-red-500/30' : 'border-emerald-500/30'
+          }`}>
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
+                  confirmToggleUserModal.is_active
+                    ? 'bg-red-500/15 text-red-400 border-red-500/20'
+                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+                }`}>
+                  {confirmToggleUserModal.is_active ? <LuUserX size={18} /> : <LuUserCheck size={18} />}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">
+                    {confirmToggleUserModal.is_active ? 'Ban Member Profile' : 'Reactivate Member Profile'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {confirmToggleUserModal.display_name || confirmToggleUserModal.full_name || 'Member'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmToggleUserModal(null)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <LuX size={16} />
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-white/5 text-xs sm:text-sm text-slate-300 leading-relaxed">
+              {confirmToggleUserModal.is_active ? (
+                <p>
+                  Are you sure you want to <strong>ban</strong>{' '}
+                  <span className="text-white font-semibold">
+                    {confirmToggleUserModal.display_name || 'this member'}
+                  </span>
+                  ? Their profile will be immediately hidden from the public dating feed.
+                </p>
+              ) : (
+                <p>
+                  Reactivate{' '}
+                  <span className="text-white font-semibold">
+                    {confirmToggleUserModal.display_name || 'this member'}
+                  </span>
+                  ? Their profile will immediately be visible on the dating feed again.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmToggleUserModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeToggleUserActive(confirmToggleUserModal)}
+                className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold transition-all cursor-pointer ${
+                  confirmToggleUserModal.is_active
+                    ? 'bg-red-600 hover:bg-red-500 shadow-lg shadow-red-600/25'
+                    : 'bg-emerald-500 hover:bg-emerald-400 shadow-lg shadow-emerald-500/25'
+                }`}
+              >
+                {confirmToggleUserModal.is_active ? 'Yes, Ban Member' : 'Yes, Reactivate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {creditAdjustModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
           <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-slate-900 p-6 text-white space-y-4 shadow-2xl">
