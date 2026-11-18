@@ -52,6 +52,7 @@ export const INTENTS = [
   { value: 'marriage', label: 'Marriage' },
   { value: 'friends', label: 'Friends' },
   { value: 'casual_dating', label: 'Casual Dating' },
+  { value: 'friends_with_benefits', label: 'Friends with Benefits' },
 ];
 
 export const INTENT_LOOKUP = Object.fromEntries(

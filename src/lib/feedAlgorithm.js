@@ -21,8 +21,9 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const COMPATIBLE_INTENTS = {
   serious_relationship: ['serious_relationship', 'marriage'],
   marriage: ['marriage', 'serious_relationship'],
-  casual_dating: ['casual_dating', 'friends'],
+  casual_dating: ['casual_dating', 'friends_with_benefits', 'friends'],
   friends: ['friends', 'casual_dating'],
+  friends_with_benefits: ['friends_with_benefits', 'casual_dating'],
 };
 
 /**

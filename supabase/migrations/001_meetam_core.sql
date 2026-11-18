@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS idx_app_settings_key ON app_settings(key);
 INSERT INTO app_settings (key, value, description)
 VALUES 
   ('enable_media_uploads', '{"enable_media_uploads": true}', 'Enable media uploads on profiles'),
-  ('enabled_intents', '{"intents": ["serious_relationship", "marriage", "friends", "casual_dating"]}', 'Allowed relationship intents')
+  ('enabled_intents', '{"intents": ["serious_relationship", "marriage", "friends", "casual_dating", "friends_with_benefits"]}', 'Allowed relationship intents')
 ON CONFLICT (key) DO NOTHING;
 
 -- 3. Profiles

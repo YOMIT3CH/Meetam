@@ -231,4 +231,29 @@ CREATE POLICY "Allow admin modify announcements"
 -- 8. Add show_photo column to profiles if not exists
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_photo BOOLEAN DEFAULT TRUE;
 
+-- 9. Setup public avatars storage buckets and RLS policies
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('profile-photos', 'profile-photos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public Access to Avatars" ON storage.objects;
+CREATE POLICY "Public Access to Avatars"
+  ON storage.objects FOR SELECT
+  USING (bucket_id IN ('avatars', 'profile-photos'));
+
+DROP POLICY IF EXISTS "Allow user upload avatars" ON storage.objects;
+CREATE POLICY "Allow user upload avatars"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id IN ('avatars', 'profile-photos'));
+
+DROP POLICY IF EXISTS "Allow user update avatars" ON storage.objects;
+CREATE POLICY "Allow user update avatars"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id IN ('avatars', 'profile-photos'));
+
+
 

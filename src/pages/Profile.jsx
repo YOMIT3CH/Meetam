@@ -35,6 +35,43 @@ import {
   LuTrash2,
 } from 'react-icons/lu'
 
+// ── Compress image to compact DataURL ─────────────────────────────────────────
+function compressImage(file, maxWidth = 500, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          }
+        } else {
+          if (height > maxWidth) {
+            width = Math.round((width * maxWidth) / height)
+            height = maxWidth
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.onerror = () => resolve(e.target.result)
+      img.src = e.target.result
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
 // ── Gradient initials avatar ──────────────────────────────────────────────────
 function InitialsAvatar({ name = '', size = 'lg' }) {
   const initials = name
@@ -152,6 +189,7 @@ export default function Profile() {
   const [toast, setToast] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   // Boost state
   const [boosting, setBoosting] = useState(false)
@@ -228,13 +266,14 @@ export default function Profile() {
     setRemovePhoto(false)
     setPhotoFile(null)
     setPhotoPreview(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
   }
 
   useEffect(() => {
     if (user) fetchProfile()
   }, [user])
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
@@ -244,9 +283,14 @@ export default function Profile() {
     setError('')
     setRemovePhoto(false)
     setPhotoFile(file)
-    const reader = new FileReader()
-    reader.onload = (ev) => setPhotoPreview(ev.target.result)
-    reader.readAsDataURL(file)
+    try {
+      const compressed = await compressImage(file, 500, 0.8)
+      setPhotoPreview(compressed)
+    } catch {
+      const reader = new FileReader()
+      reader.onload = (ev) => setPhotoPreview(ev.target.result)
+      reader.readAsDataURL(file)
+    }
   }
 
   const handleSave = async () => {
@@ -258,75 +302,121 @@ export default function Profile() {
     try {
       let finalPhotoUrl = removePhoto ? null : (profileData?.photo_url || null)
 
-        if (photoFile && !removePhoto) {
-          const ext = photoFile.name.split('.').pop()
-          const path = `avatars/${user.id}_${Date.now()}.${ext}`
-          const { error: upErr } = await supabase.storage
+      if (photoFile && !removePhoto) {
+        let uploadedUrl = null
+
+        // 1. Try uploading to Supabase storage 'avatars'
+        try {
+          const ext = photoFile.name.split('.').pop() || 'jpg'
+          const filePath = `${user.id}_${Date.now()}.${ext}`
+
+          const { error: upErr1 } = await supabase.storage
             .from('avatars')
-            .upload(path, photoFile, { upsert: true })
-          if (!upErr) {
-            const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
-            finalPhotoUrl = urlData?.publicUrl || finalPhotoUrl
+            .upload(filePath, photoFile, {
+              upsert: true,
+              cacheControl: '3600',
+              contentType: photoFile.type || 'image/jpeg',
+            })
+
+          if (!upErr1) {
+            const { data: pubData } = supabase.storage
+              .from('avatars')
+              .getPublicUrl(filePath)
+            if (pubData?.publicUrl) uploadedUrl = pubData.publicUrl
+          } else {
+            console.warn('Avatars bucket upload note:', upErr1)
+            // Try 'profile-photos' bucket
+            const { error: upErr2 } = await supabase.storage
+              .from('profile-photos')
+              .upload(filePath, photoFile, {
+                upsert: true,
+                cacheControl: '3600',
+                contentType: photoFile.type || 'image/jpeg',
+              })
+
+            if (!upErr2) {
+              const { data: pubData2 } = supabase.storage
+                .from('profile-photos')
+                .getPublicUrl(filePath)
+              if (pubData2?.publicUrl) uploadedUrl = pubData2.publicUrl
+            } else {
+              console.warn('Profile-photos bucket upload note:', upErr2)
+            }
           }
+        } catch (storageErr) {
+          console.warn('Storage upload note:', storageErr)
         }
 
-        const interestsArray = editInterests
-          ? editInterests.split(',').map((s) => s.trim()).filter(Boolean)
-          : []
-
-        const payload = {
-          full_name: editName,
-          display_name: editName,
-          bio: editBio,
-          about_me: editBio,
-          looking_for: editLookingFor,
-          interests: interestsArray,
-          orientation: editOrientation,
-          tribe: editTribe,
-          religion: editReligion,
-          occupation: editOccupation,
-          body_type: editBodyType,
-          height: editHeight,
-          state: editState,
-          location_state: editState,
-          area: editCity,
-          location_city: editCity,
-          intent: editIntent,
-          whatsapp_number: editWhatsapp,
-          snapchat_handle: editSnapchat,
-          photo_url: finalPhotoUrl,
-          show_photo: editShowPhoto,
-          updated_at: new Date().toISOString(),
-        }
-
-        if (profileData?.id) {
-          const { error: updateErr } = await supabase
-            .from('profiles')
-            .update(payload)
-            .eq('id', profileData.id)
-          if (updateErr) throw updateErr
-        } else {
-          const { error: insertErr } = await supabase.from('profiles').insert({
-            ...payload,
-            id: user.id,
-            user_id: user.id,
-          })
-          if (insertErr) throw insertErr
-        }
-
-        setSaveSuccess(true)
-        await fetchProfile()
-        setTimeout(() => {
-          setSaveSuccess(false)
-          setShowEditModal(false)
-          showToast('Profile saved!')
-        }, 900)
-      } catch (err) {
-        setError(err.message || 'Failed to save profile')
-      } finally {
-        setSaving(false)
+        // Guaranteed fallback to compressed DataURL if storage bucket isn't available
+        finalPhotoUrl = uploadedUrl || photoPreview || finalPhotoUrl
       }
+
+      const interestsArray = editInterests
+        ? editInterests.split(',').map((s) => s.trim()).filter(Boolean)
+        : []
+
+      const payload = {
+        full_name: editName,
+        display_name: editName,
+        bio: editBio,
+        about_me: editBio,
+        looking_for: editLookingFor,
+        interests: interestsArray,
+        orientation: editOrientation,
+        tribe: editTribe,
+        religion: editReligion,
+        occupation: editOccupation,
+        body_type: editBodyType,
+        height: editHeight,
+        state: editState,
+        location_state: editState,
+        area: editCity,
+        location_city: editCity,
+        intent: editIntent,
+        whatsapp_number: editWhatsapp,
+        snapchat_handle: editSnapchat,
+        photo_url: finalPhotoUrl,
+        show_photo: editShowPhoto,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (profileData?.id) {
+        const { error: updateErr } = await supabase
+          .from('profiles')
+          .update(payload)
+          .eq('id', profileData.id)
+        if (updateErr) throw updateErr
+      } else {
+        const { error: insertErr } = await supabase.from('profiles').insert({
+          ...payload,
+          id: user.id,
+          user_id: user.id,
+        })
+        if (insertErr) throw insertErr
+      }
+
+      setSaveSuccess(true)
+      setImgError(false)
+      // Optimistically update local profileData immediately so picture appears instantly!
+      setProfileData((prev) => ({
+        ...prev,
+        ...payload,
+        photo_url: finalPhotoUrl,
+        show_photo: editShowPhoto,
+      }))
+
+      await fetchProfile()
+      setTimeout(() => {
+        setSaveSuccess(false)
+        setShowEditModal(false)
+        showToast('Profile saved!')
+      }, 700)
+    } catch (err) {
+      setError(err.message || 'Failed to save profile')
+    } finally {
+      setSaving(false)
     }
+  }
 
   const handleBoost = async () => {
       if (!profileData) return
@@ -420,11 +510,12 @@ export default function Profile() {
               {/* Avatar + action buttons */}
               <div className="flex items-end justify-between gap-3 mb-4">
                 <div className="relative">
-                  {profileData?.photo_url ? (
+                  {profileData?.photo_url && !imgError ? (
                   <div className="relative">
                     <img
                       src={profileData.photo_url}
                       alt={displayName}
+                      onError={() => setImgError(true)}
                       className={`w-24 h-24 rounded-2xl object-cover border-2 shadow-xl ${
                         profileData?.show_photo === false
                           ? 'border-amber-400/50 opacity-90'
@@ -773,6 +864,7 @@ export default function Profile() {
                       ref={photoInputRef}
                       type="file"
                       accept="image/*"
+                      onClick={(e) => { e.target.value = null }}
                       onChange={handlePhotoChange}
                       className="hidden"
                     />
