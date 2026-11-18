@@ -113,14 +113,14 @@ function InitialsAvatar({ name = '', size = 'lg' }) {
 function StatCard({ icon, label, value, highlight, action }) {
   return (
     <div
-      className={`rounded-2xl border p-4 flex flex-col gap-2 ${highlight ? 'border-amber-400/30 bg-amber-500/5' : 'border-white/10 bg-white/[0.03]'
+      className={`rounded-2xl border p-2.5 sm:p-4 flex flex-col gap-1.5 sm:gap-2 ${highlight ? 'border-amber-400/30 bg-amber-500/5' : 'border-white/10 bg-white/[0.03]'
         }`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         {icon}
-        <span className="text-xs text-slate-400 font-medium">{label}</span>
+        <span className="text-[11px] sm:text-xs text-slate-400 font-medium truncate">{label}</span>
       </div>
-      <p className={`text-2xl font-bold leading-none ${highlight ? 'text-amber-300' : 'text-white'}`}>
+      <p className={`text-lg sm:text-2xl font-bold leading-none ${highlight ? 'text-amber-300' : 'text-white'}`}>
         {value}
       </p>
       {action && <div className="mt-0.5">{action}</div>}
@@ -500,7 +500,7 @@ export default function Profile() {
           </div>
         )}
 
-        <div className="max-w-2xl mx-auto px-4 pt-6 pb-28 space-y-4">
+        <div className="max-w-2xl mx-auto px-3.5 sm:px-4 pt-4 sm:pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] space-y-4">
 
           {/* ── HERO CARD ──────────────────────────────────────────────────── */}
           <div className="relative rounded-3xl overflow-hidden border border-white/10">
@@ -1067,7 +1067,8 @@ export default function Profile() {
             </div>
 
             {/* Footer */}
-                      <div className="shrink-0 px-5 py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
+            {/* Footer */}
+            <div className="shrink-0 px-4 sm:px-5 py-3 sm:py-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
                         <button
                           onClick={() => setShowEditModal(false)}
                           className="flex-1 bg-white/5 border border-white/10 text-slate-300 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-white/10 transition-all cursor-pointer"

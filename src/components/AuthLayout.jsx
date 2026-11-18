@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom';
 import { LuShieldCheck, LuMapPin, LuLockOpen, LuSparkles, LuHeart } from 'react-icons/lu';
 
-export default function AuthLayout({ children, activeTab = 'login' }) {
+function AuthLayout({ children, activeTab = 'login' }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-white relative flex flex-col justify-between overflow-x-hidden">
+    <div className="min-h-screen bg-slate-950 text-white relative flex flex-col justify-between overflow-x-clip">
       {/* Ambient background glows */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
       {/* Top Navbar */}
-      <header className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+      <header className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pt-[max(1.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
             <span className="text-white text-base font-bold">M</span>
@@ -137,7 +137,7 @@ export default function AuthLayout({ children, activeTab = 'login' }) {
               </div>
 
               {/* Form Card */}
-              <div className="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+              <div className="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-4 sm:p-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="relative z-10">
                   {children}
@@ -150,7 +150,7 @@ export default function AuthLayout({ children, activeTab = 'login' }) {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 text-center text-xs text-slate-400 border-t border-white/5">
+      <footer className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] text-center text-xs text-slate-400 border-t border-white/5">
         <div className="flex flex-wrap items-center justify-center gap-4">
           <span>&copy; {new Date().getFullYear()} MeetAm Technologies Ltd.</span>
           <span>&middot;</span>
@@ -162,3 +162,6 @@ export default function AuthLayout({ children, activeTab = 'login' }) {
     </div>
   );
 }
+
+export { AuthLayout };
+export default AuthLayout;

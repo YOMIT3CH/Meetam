@@ -623,7 +623,7 @@ export default function Admin() {
       )}
 
       {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3.5 pt-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.75rem))] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-pink-500 flex items-center justify-center font-bold text-white shadow-md shadow-emerald-500/20">
             <LuShieldCheck size={18} />
@@ -658,7 +658,7 @@ export default function Admin() {
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 pb-[calc(4rem+env(safe-area-inset-bottom,0px))] space-y-6">
         {/* KPI Stats Row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-white/10 flex items-center justify-between">

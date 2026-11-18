@@ -205,7 +205,7 @@ export default function Feed() {
         onCompleted={() => { setShowTopUp(false); refreshCredits(); }}
       />
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mb-6">
           {/* Search */}
@@ -269,11 +269,11 @@ export default function Feed() {
           </div>
 
           {/* Intent pills */}
-          <div className="flex gap-1.5 sm:gap-2 flex-wrap items-center w-full">
+          <div className="flex gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 sm:py-0 sm:flex-wrap items-center w-full">
             {/* Default "All Intents" pill */}
             <button
               onClick={() => setFilterIntents([])}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${filterIntents.length === 0
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shrink-0 cursor-pointer ${filterIntents.length === 0
                   ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 shadow-sm shadow-emerald-500/10 ring-1 ring-emerald-400/30'
                   : 'bg-slate-900/90 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
                 }`}
@@ -293,7 +293,7 @@ export default function Feed() {
                         : [...prev, intent.value]
                     )
                   }
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border cursor-pointer ${active
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border shrink-0 cursor-pointer ${active
                       ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 shadow-sm shadow-emerald-500/10'
                       : 'bg-slate-900/90 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
                     }`}

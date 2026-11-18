@@ -45,7 +45,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white relative flex flex-col justify-center items-center px-4 overflow-hidden">
+    <div className="min-h-screen bg-slate-950 text-white relative flex flex-col justify-center items-center px-4 py-8 overflow-x-clip">
       {/* Ambient background glows */}
       <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2" />
       <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/2" />

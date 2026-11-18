@@ -43,8 +43,8 @@ export default function OnboardingModal() {
   if (hasOnboarded || !hasOnboarded && skipped) return null;
 
   const goToStep = (next) => setStep(Math.max(0, Math.min(STEPS.length - 1, next)));
-  const nextStep = () => goToStep((step) => step + 1);
-  const prevStep = () => goToStep((step) => step - 1);
+  const nextStep = () => goToStep(step + 1);
+  const prevStep = () => goToStep(step - 1);
 
   const finish = () => {
     window.localStorage.setItem('meetam_onboarded', '1');
@@ -52,7 +52,7 @@ export default function OnboardingModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-3 sm:p-4">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 backdrop-blur-md p-3 sm:p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+1rem))]">
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/95 p-5 sm:p-8 text-white">
         <div className="flex items-center justify-between mb-5">
           <span className="text-xs font-semibold text-emerald-400 tracking-widest uppercase">

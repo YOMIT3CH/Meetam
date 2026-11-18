@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  height: auto;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #020617;
+  color: #ffffff;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar for smooth horizontal swipe on mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @layer components {
   .input-field {
     @apply w-full bg-white/15 border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 focus:bg-white/20 focus:border-emerald-500 outline-none transition-colors;

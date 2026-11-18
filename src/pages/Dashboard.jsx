@@ -224,7 +224,7 @@ export default function Dashboard() {
         onCompleted={() => { setShowTopUp(false); refreshCredits(); }}
       />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] space-y-6">
 
         {/* Stats row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -693,7 +693,7 @@ export default function Dashboard() {
             </div>
 
             {/* Sticky Footer */}
-            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}

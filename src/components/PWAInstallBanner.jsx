@@ -94,7 +94,7 @@ export default function PWAInstallBanner() {
   return (
     <>
       {/* Floating Bottom Install Prompt */}
-      <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm z-[80] animate-in slide-in-from-bottom-5 duration-300">
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm z-[80] animate-in slide-in-from-bottom-5 duration-300">
         <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-white/15 shadow-2xl shadow-emerald-500/10 flex items-center justify-between gap-3 text-white">
           <div className="flex items-center gap-3 min-w-0">
             {/* App Icon */}

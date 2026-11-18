@@ -427,7 +427,7 @@ export default function CreditTopUpModal({ open, onClose, onCompleted }) {
             </div>
 
             {/* Sticky Step 1 Footer */}
-            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex items-center gap-2.5">
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={resetModal}
@@ -584,7 +584,7 @@ export default function CreditTopUpModal({ open, onClose, onCompleted }) {
             </div>
 
             {/* Sticky Step 2 Footer */}
-            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex items-center gap-2.5">
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] border-t border-white/10 bg-slate-900/95 backdrop-blur-md flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setActiveStep(1)}

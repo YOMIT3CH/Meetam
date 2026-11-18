@@ -28,5 +28,17 @@
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "url": "/feed",
+      "description": "Browse singles on MeetAm"
+    },
+    {
+      "name": "Profile",
+      "url": "/profile",
+      "description": "View and edit your profile"
+    }
   ]
 }

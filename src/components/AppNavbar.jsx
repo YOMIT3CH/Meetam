@@ -30,7 +30,7 @@ export default function AppNavbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-white/5">
+    <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
@@ -132,7 +132,7 @@ export default function AppNavbar() {
 
       {/* Mobile nav drawer */}
       {mobileOpen && (
-        <div className="md:hidden bg-slate-950/98 backdrop-blur-xl border-b border-white/10 px-4 py-4 space-y-2">
+        <div className="md:hidden bg-slate-950/98 backdrop-blur-xl border-b border-white/10 px-4 py-4 space-y-2 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.path;
