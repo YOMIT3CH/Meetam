@@ -91,6 +91,7 @@ export const PUBLIC_PROFILE_FIELDS = [
   'looking_for',
   'interests',
   'photo_url',
+  'show_photo',
   'whatsapp_number',
   'is_active',
   'is_featured',

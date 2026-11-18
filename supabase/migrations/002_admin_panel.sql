@@ -228,3 +228,7 @@ CREATE POLICY "Allow admin modify announcements"
   USING (true)
   WITH CHECK (true);
 
+-- 8. Add show_photo column to profiles if not exists
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS show_photo BOOLEAN DEFAULT TRUE;
+
+

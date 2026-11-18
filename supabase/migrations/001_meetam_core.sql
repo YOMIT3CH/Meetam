@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   bio TEXT,
   interests TEXT[] DEFAULT '{}',
   photo_url TEXT,
+  show_photo BOOLEAN DEFAULT TRUE,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

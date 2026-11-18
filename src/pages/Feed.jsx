@@ -74,7 +74,7 @@ export default function Feed() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user]);
 
   // ---- Filters ----
@@ -140,7 +140,7 @@ export default function Feed() {
     if (profiles.length === 0) return;
     const unlockedIds = unlockedContacts.map((c) => c.profile_id);
     setProfiles((prev) => rankProfiles(prev, viewerMeta, unlockedIds));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewerMeta]);
 
   const handleUnlock = async (profileId) => {
@@ -166,23 +166,23 @@ export default function Feed() {
   // Filter visible profiles by search across all intro attributes
   const displayProfiles = search.trim()
     ? profiles.filter((p) => {
-        const q = search.toLowerCase();
-        return (
-          p.display_name?.toLowerCase().includes(q) ||
-          p.full_name?.toLowerCase().includes(q) ||
-          p.about_me?.toLowerCase().includes(q) ||
-          p.bio?.toLowerCase().includes(q) ||
-          p.tribe?.toLowerCase().includes(q) ||
-          p.occupation?.toLowerCase().includes(q) ||
-          p.body_type?.toLowerCase().includes(q) ||
-          p.height?.toLowerCase().includes(q) ||
-          p.state?.toLowerCase().includes(q) ||
-          p.location_state?.toLowerCase().includes(q) ||
-          p.area?.toLowerCase().includes(q) ||
-          p.location_city?.toLowerCase().includes(q) ||
-          p.looking_for?.toLowerCase().includes(q)
-        );
-      })
+      const q = search.toLowerCase();
+      return (
+        p.display_name?.toLowerCase().includes(q) ||
+        p.full_name?.toLowerCase().includes(q) ||
+        p.about_me?.toLowerCase().includes(q) ||
+        p.bio?.toLowerCase().includes(q) ||
+        p.tribe?.toLowerCase().includes(q) ||
+        p.occupation?.toLowerCase().includes(q) ||
+        p.body_type?.toLowerCase().includes(q) ||
+        p.height?.toLowerCase().includes(q) ||
+        p.state?.toLowerCase().includes(q) ||
+        p.location_state?.toLowerCase().includes(q) ||
+        p.area?.toLowerCase().includes(q) ||
+        p.location_city?.toLowerCase().includes(q) ||
+        p.looking_for?.toLowerCase().includes(q)
+      );
+    })
     : profiles;
 
   if (authLoading) {
@@ -273,11 +273,10 @@ export default function Feed() {
             {/* Default "All Intents" pill */}
             <button
               onClick={() => setFilterIntents([])}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
-                filterIntents.length === 0
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border cursor-pointer ${filterIntents.length === 0
                   ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 shadow-sm shadow-emerald-500/10 ring-1 ring-emerald-400/30'
                   : 'bg-slate-900/90 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-              }`}
+                }`}
             >
               All Intents
             </button>
@@ -294,11 +293,10 @@ export default function Feed() {
                         : [...prev, intent.value]
                     )
                   }
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border cursor-pointer ${
-                    active
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border cursor-pointer ${active
                       ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300 shadow-sm shadow-emerald-500/10'
                       : 'bg-slate-900/90 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-                  }`}
+                    }`}
                 >
                   {intent.label}
                 </button>
@@ -431,30 +429,31 @@ function ProfileCard({
 
   return (
     <div
-      className={`relative rounded-3xl border bg-slate-900/80 p-4 sm:p-5 flex flex-col gap-3.5 sm:gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${
-        profile.is_featured
+      className={`relative rounded-3xl border bg-slate-900/80 p-4 sm:p-5 flex flex-col gap-3.5 sm:gap-4 transition-all duration-200 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-500/5 ${profile.is_featured
           ? 'border-emerald-400/50 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-400/20'
           : isForYou
-          ? 'border-pink-400/30 shadow-md shadow-pink-500/5'
-          : 'border-white/10 hover:border-white/20'
-      }`}
+            ? 'border-pink-400/30 shadow-md shadow-pink-500/5'
+            : 'border-white/10 hover:border-white/20'
+        }`}
     >
       {/* Top Bar: Avatar, Name & Age, Badges */}
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {/* Avatar — photo or initials */}
           <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden border border-white/10 shrink-0">
-            {profile.photo_url ? (
-              <img
-                src={profile.photo_url}
-                alt={displayName}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-emerald-400/20 to-pink-500/20 flex items-center justify-center font-bold text-white text-sm sm:text-base">
-                {initials}
-              </div>
-            )}
+              {
+                profile.photo_url && profile.show_photo !== false ? (
+                  <img
+                    src={profile.photo_url}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-400/20 to-pink-500/20 flex items-center justify-center font-bold text-white text-sm sm:text-base">
+                    {initials}
+                  </div>
+                )
+              }
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-white text-base sm:text-lg tracking-tight truncate">
@@ -620,13 +619,12 @@ function ProfileCard({
           <button
             onClick={onUnlock}
             disabled={unlocking || creditsBalance < 1}
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              unlocking
+            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${unlocking
                 ? 'bg-white/5 border border-white/10 text-slate-500 cursor-wait'
                 : creditsBalance < 1
-                ? 'bg-white/5 border border-white/10 text-slate-400 hover:border-emerald-400/40 hover:text-white'
-                : 'bg-gradient-to-r from-emerald-500 to-pink-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-[0.99]'
-            }`}
+                  ? 'bg-white/5 border border-white/10 text-slate-400 hover:border-emerald-400/40 hover:text-white'
+                  : 'bg-gradient-to-r from-emerald-500 to-pink-500 text-white shadow-md shadow-emerald-500/20 hover:shadow-emerald-500/35 hover:scale-[1.01] active:scale-[0.99]'
+              }`}
           >
             {unlocking ? (
               <span className="animate-spin h-4 w-4 border-2 border-white/20 border-t-white rounded-full" />
