@@ -4,8 +4,8 @@ import { LuShield, LuUsers, LuMapPin, LuArrowLeft } from 'react-icons/lu';
 export default function Terms() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8 py-4">
+      {/* Sticky Top Navigation */}
+      <nav className="sticky top-0 z-50 w-full bg-slate-950/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3.5 pt-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.75rem))] shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-pink-500 rounded-lg flex items-center justify-center">
@@ -24,7 +24,7 @@ export default function Terms() {
       </nav>
 
       {/* Main Container */}
-      <div className="pt-24 px-4 pb-20 max-w-3xl mx-auto">
+      <div className="pt-8 sm:pt-10 px-4 pb-20 max-w-3xl mx-auto">
         <div className="glass-card p-5 sm:p-8 md:p-10 rounded-2xl">
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6 tracking-tight">Terms of Service</h1>
 

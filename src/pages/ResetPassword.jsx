@@ -45,25 +45,39 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white relative flex flex-col justify-center items-center px-4 py-8 overflow-x-clip">
+    <div className="min-h-screen bg-slate-950 text-white relative flex flex-col justify-between overflow-x-clip">
       {/* Ambient background glows */}
       <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2" />
       <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/2" />
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-md">
-        {/* Brand header */}
-        <div className="text-center mb-6">
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-4 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-              <span className="text-white text-lg font-bold">M</span>
+      {/* Sticky Top Navbar */}
+      <header className="sticky top-0 z-40 w-full bg-slate-950/95 backdrop-blur-md border-b border-white/10 py-3.5 pt-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.75rem))] shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+              <span className="text-white text-base font-bold">M</span>
             </div>
-            <span className="font-bold text-xl tracking-tight text-white">MeetAm</span>
+            <div>
+              <span className="font-bold text-lg tracking-tight text-white block leading-tight">MeetAm</span>
+              <span className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Personality-First</span>
+            </div>
+          </Link>
+
+          <Link
+            to="/login"
+            className="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-all"
+          >
+            Back to Sign In
           </Link>
         </div>
+      </header>
 
-        {/* Card */}
-        <div className="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-8 shadow-2xl relative overflow-hidden">
+      {/* Main Content Area */}
+      <main className="relative z-10 max-w-md w-full mx-auto px-4 py-8 sm:py-12 flex-1 flex items-center justify-center">
+        <div className="w-full">
+          {/* Card */}
+          <div className="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           {resetComplete ? (
             <div className="text-center py-3">
               <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto mb-4">
@@ -174,6 +188,7 @@ export default function ResetPassword() {
           )}
         </div>
       </div>
-    </div>
-  );
+    </main>
+  </div>
+);
 }

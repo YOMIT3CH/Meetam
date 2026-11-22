@@ -9,28 +9,30 @@ function AuthLayout({ children, activeTab = 'login' }) {
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
-      {/* Top Navbar */}
-      <header className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 pt-[max(1.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-            <span className="text-white text-base font-bold">M</span>
-          </div>
-          <div>
-            <span className="font-bold text-lg tracking-tight text-white block leading-tight">MeetAm</span>
-            <span className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Personality-First</span>
-          </div>
-        </Link>
-
-        <div className="flex items-center gap-3 text-sm">
-          <span className="hidden sm:inline text-slate-400 text-xs">
-            {activeTab === 'login' ? "Don't have an account?" : 'Already a member?'}
-          </span>
-          <Link
-            to={activeTab === 'login' ? '/register' : '/login'}
-            className="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-all"
-          >
-            {activeTab === 'login' ? 'Create Account' : 'Sign In'}
+      {/* Sticky Top Navbar */}
+      <header className="sticky top-0 z-40 w-full bg-slate-950/95 backdrop-blur-md border-b border-white/10 py-3.5 pt-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.75rem))] shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+              <span className="text-white text-base font-bold">M</span>
+            </div>
+            <div>
+              <span className="font-bold text-lg tracking-tight text-white block leading-tight">MeetAm</span>
+              <span className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Personality-First</span>
+            </div>
           </Link>
+
+          <div className="flex items-center gap-3 text-sm">
+            <span className="hidden sm:inline text-slate-400 text-xs">
+              {activeTab === 'login' ? "Don't have an account?" : 'Already a member?'}
+            </span>
+            <Link
+              to={activeTab === 'login' ? '/register' : '/login'}
+              className="px-3.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-all"
+            >
+              {activeTab === 'login' ? 'Create Account' : 'Sign In'}
+            </Link>
+          </div>
         </div>
       </header>
 

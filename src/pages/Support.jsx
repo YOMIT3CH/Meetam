@@ -9,8 +9,8 @@ export default function Support() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-4 sm:px-6 lg:px-8 py-4">
+      {/* Sticky Top Navigation */}
+      <nav className="sticky top-0 z-50 w-full bg-slate-950/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 lg:px-8 py-3.5 pt-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.75rem))] shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-pink-500 rounded-lg flex items-center justify-center">
@@ -29,7 +29,7 @@ export default function Support() {
       </nav>
 
       {/* Main Container */}
-      <div className="pt-24 px-4 pb-20 max-w-2xl mx-auto">
+      <div className="pt-8 sm:pt-10 px-4 pb-20 max-w-2xl mx-auto">
         <div className="glass-card p-5 sm:p-8 rounded-2xl">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">

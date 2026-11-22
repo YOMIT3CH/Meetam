@@ -8,7 +8,7 @@ const ScrollIndicator = () => (
 
 export default function Hero() {
   return (
-    <section className="relative pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-16 lg:pt-32 lg:pb-24 overflow-hidden">
+    <section className="relative pt-10 sm:pt-16 pb-16 lg:pt-24 lg:pb-24 overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl -z-10" />
       <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-3xl -z-10" />
 
