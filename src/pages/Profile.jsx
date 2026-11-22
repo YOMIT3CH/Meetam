@@ -180,11 +180,16 @@ export default function Profile() {
     refreshCredits,
     showTopUp,
     setShowTopUp,
+    logout,
   } = useMeetAm()
 
   const [profileData, setProfileData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -436,8 +441,67 @@ export default function Profile() {
     }
 
     const handleLogout = async () => {
-      await supabase.auth.signOut()
+      if (logout) {
+        await logout()
+      } else {
+        await supabase.auth.signOut()
+      }
       navigate('/login')
+    }
+
+    const handleDeleteAccount = async () => {
+      if (!user || deleteConfirmText.trim().toUpperCase() !== 'DELETE') return
+      setIsDeletingAccount(true)
+      setDeleteError('')
+
+      try {
+        // 1. Remove photo file from storage buckets if exists
+        if (profileData?.photo_url) {
+          try {
+            const urlParts = profileData.photo_url.split('/')
+            const filename = urlParts[urlParts.length - 1]
+            await supabase.storage.from('avatars').remove([`${user.id}/${filename}`])
+            await supabase.storage.from('profile-photos').remove([`${user.id}/${filename}`])
+          } catch (_) {}
+        }
+
+        // 2. Try the atomic delete RPC function
+        let rpcSucceeded = false
+        try {
+          const { data: rpcRes, error: rpcErr } = await supabase.rpc('delete_user_account')
+          if (!rpcErr && rpcRes && rpcRes.ok) {
+            rpcSucceeded = true
+          }
+        } catch (_) {}
+
+        // 3. Fallback client-side deletions if RPC is not deployed yet
+        if (!rpcSucceeded) {
+          await supabase
+            .from('profiles')
+            .delete()
+            .or(`id.eq.${user.id},user_id.eq.${user.id}`)
+
+          await supabase.from('wallets').delete().eq('user_id', user.id)
+          await supabase.from('unlocked_contacts').delete().eq('user_id', user.id)
+          await supabase.from('state_alerts').delete().eq('user_id', user.id)
+        }
+
+        // 4. Clear local device state
+        localStorage.removeItem('meetam_onboarded')
+        localStorage.removeItem('meetam_pwa_dismissed')
+
+        // 5. Sign out
+        if (logout) {
+          await logout()
+        } else {
+          await supabase.auth.signOut()
+        }
+
+        navigate('/register', { replace: true })
+      } catch (err) {
+        setDeleteError(err.message || 'Failed to delete account. Please try again.')
+        setIsDeletingAccount(false)
+      }
     }
 
     // ── Loading / unauthenticated ─────────────────────────────────────────────
@@ -795,6 +859,33 @@ export default function Profile() {
             </div>
           )}
 
+          {/* ── DANGER ZONE: DELETE ACCOUNT ─────────────────────────────────── */}
+          <div className="rounded-2xl border border-red-500/20 bg-red-950/15 p-4 sm:p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <LuTrash2 size={14} />
+                  Danger Zone
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Permanently delete your profile, dating card, and all account data.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirmText('')
+                  setDeleteError('')
+                  setShowDeleteModal(true)
+                }}
+                className="shrink-0 px-3.5 py-2 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <LuTrash2 size={13} />
+                <span>Delete Account</span>
+              </button>
+            </div>
+          </div>
+
           {/* ── QUICK NAV ────────────────────────────────────────────────────── */}
           <button
             onClick={() => navigate('/feed')}
@@ -1092,6 +1183,93 @@ export default function Profile() {
                     </div>
                   </div>
       )}
+
+      {/* ══════════════════════ DELETE ACCOUNT MODAL ═════════════════════════ */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => !isDeletingAccount && setShowDeleteModal(false)}
+          />
+
+          <div className="relative bg-slate-900 border border-white/10 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl z-10 text-white space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 shrink-0">
+                  <LuTrash2 size={20} />
                 </div>
-                )
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-white">Delete Account?</h3>
+                  <p className="text-xs text-slate-400">This action is permanent and cannot be undone.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isDeletingAccount && setShowDeleteModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <LuX size={16} />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-red-950/20 border border-red-500/20 space-y-2 text-xs text-slate-300">
+              <p className="font-semibold text-red-300">Here is what will be deleted:</p>
+              <ul className="list-disc list-inside space-y-1 text-slate-400">
+                <li>Your public dating card and intro will be removed from the feed.</li>
+                <li>Your profile photo, bio, and dating preferences will be erased.</li>
+                <li>Any remaining credits and unlocked contacts will be wiped.</li>
+              </ul>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Type <span className="font-mono text-red-400 font-bold">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE"
+                disabled={isDeletingAccount}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white placeholder:text-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-all"
+              />
+            </div>
+
+            {deleteError && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs">
+                <LuCircleAlert size={15} className="shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeletingAccount}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs sm:text-sm font-semibold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={isDeletingAccount || deleteConfirmText.trim().toUpperCase() !== 'DELETE'}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-semibold shadow-lg shadow-red-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {isDeletingAccount ? (
+                  <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                ) : (
+                  <>
+                    <LuTrash2 size={14} />
+                    <span>Delete Forever</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
